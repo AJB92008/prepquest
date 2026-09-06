@@ -28,12 +28,16 @@ function renderTentSmall(x, y, seed) {
 
 // An open notebook on an easel, its own checklist filling in one more
 // checked line per step — the "step N" idea drawn as an actual
-// in-progress log rather than a static numbered sign.
+// in-progress log rather than a static numbered sign. The 5 checklist
+// rows plus a checkmark's own downward stroke need real headroom inside
+// the page: an earlier version of this spaced them past the page's own
+// bottom edge, so the last row (and its checkmark, once checked) stuck
+// out below the notebook itself.
 function renderFieldNotebook(x, y, step) {
   const rows = Math.min(step, 5);
-  const rings = [0, 1, 2, 3, 4].map((i) => `<circle cx="${x - 15 + i * 7.5}" cy="${y - 27}" r="1.8" fill="none" stroke="#a89468" stroke-width="1.2" />`).join("");
+  const rings = [0, 1, 2, 3, 4].map((i) => `<circle cx="${x - 15 + i * 7.5}" cy="${y - 28.5}" r="1.6" fill="none" stroke="#a89468" stroke-width="1.2" />`).join("");
   const lines = Array.from({ length: 5 }, (_, i) => {
-    const ly = y - 19 + i * 5.5;
+    const ly = y - 20 + i * 5.5;
     const checked = i < rows;
     return `
       <line x1="${x - 13}" y1="${ly}" x2="${x - 2}" y2="${ly}" stroke="#c2b48c" stroke-width="1.2" />
@@ -44,11 +48,11 @@ function renderFieldNotebook(x, y, step) {
     <ellipse cx="${x}" cy="${y + 25}" rx="17" ry="5" fill="rgba(20,40,10,0.16)" />
     <line x1="${x - 15}" y1="${y + 23}" x2="${x - 4}" y2="${y - 7}" stroke="#7a6a48" stroke-width="2.2" />
     <line x1="${x + 15}" y1="${y + 23}" x2="${x + 4}" y2="${y - 7}" stroke="#7a6a48" stroke-width="2.2" />
-    <rect x="${x - 18}" y="${y - 29}" width="36" height="30" rx="2" fill="#f7f2e4" stroke="#a89468" stroke-width="2" />
+    <rect x="${x - 18}" y="${y - 30}" width="36" height="36" rx="2" fill="#f7f2e4" stroke="#a89468" stroke-width="2" />
     ${rings}
     ${lines}
-    <circle cx="${x + 16}" cy="${y - 26}" r="8" fill="${GREEN}" />
-    <text x="${x + 16}" y="${y - 22.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#f7f2e4">${step}</text>
+    <circle cx="${x + 16}" cy="${y - 27}" r="8" fill="${GREEN}" />
+    <text x="${x + 16}" y="${y - 23.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#f7f2e4">${step}</text>
   `;
 }
 
