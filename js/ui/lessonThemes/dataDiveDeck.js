@@ -1,11 +1,12 @@
 // Data Diver's own theme (see lessonTerrain.js for the shared engine
 // every lesson-path theme renders through) — Data Deck's own server-
 // room floor, shared with graphGazerDeck.js (Graph Gazer, sc-datarep's
-// own theme, in the same zone — see scienceHub.js's own ZONES), but
-// themed around pulling a single value out of a stream of data rather
-// than reading a chart: a column of falling data figures at every stop,
-// with one real number circled and highlighted — the actual "dive in,
-// pull the value out" skill, not a chart to glance at.
+// own theme, in the same zone — see scienceHub.js's own ZONES). A
+// scattered handful of data points at every stop, with a magnifying
+// glass zoomed in on one of them, glowing — the "dive in and find the
+// value that matters" idea drawn as an actual search-and-find rather
+// than a column of stacked digits (an earlier version of this file),
+// which read as visually busy rather than as one clear target.
 import { COL_W, clamp, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 70, max: COL_W - 70 };
@@ -18,45 +19,44 @@ function pseudoRandom(seed) {
   return x - Math.floor(x);
 }
 
-// A vertical stream of small data figures, one of them circled — the
-// "dive down, pull the highlighted one out" idea drawn literally.
-function renderDataStream(x, y, seed) {
-  const rows = 5;
-  const pickIndex = Math.floor(pseudoRandom(seed) * rows);
-  const figures = Array.from({ length: rows }, (_, i) => {
-    const fy = y - 44 + i * 22;
-    const value = Math.round(pseudoRandom(seed * 3 + i) * 98) + 1;
-    const picked = i === pickIndex;
-    return `
-      <text x="${x}" y="${fy}" font-size="13" text-anchor="middle" font-family="monospace" fill="${picked ? "#0f1a20" : "rgba(232,184,79,0.55)"}">${value}</text>
-      ${picked ? `<circle cx="${x}" cy="${fy - 4}" r="14" fill="none" stroke="${CYAN}" stroke-width="2.5" />` : ""}
-    `;
-  }).join("");
-  return `
-    <rect x="${x - 22}" y="${y - 58}" width="44" height="112" rx="6" fill="#0f1a20" stroke="#0a1218" stroke-width="2" />
-    ${figures}
+// A loose scatter of plain data points around a center, with one of
+// them singled out under a magnifying glass — the point actually being
+// "interpreted" made the visual focus, everything else just context.
+function renderScatterFind(cx, cy, seed) {
+  const count = 7;
+  const points = Array.from({ length: count }, (_, i) => {
+    const angle = pseudoRandom(seed * 7 + i) * Math.PI * 2;
+    const r = 12 + pseudoRandom(seed * 13 + i) * 26;
+    return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r * 0.7 };
+  });
+  const pickIndex = Math.floor(pseudoRandom(seed) * count);
+  const pick = points[pickIndex];
+
+  const dots = points
+    .map((p, i) => (i === pickIndex ? "" : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.4" fill="${AMBER}" opacity="0.55" />`))
+    .join("");
+
+  const lensR = 20;
+  const lens = `
+    <circle cx="${pick.x.toFixed(1)}" cy="${pick.y.toFixed(1)}" r="${lensR}" fill="rgba(15,26,32,0.55)" stroke="${CYAN}" stroke-width="3" />
+    <circle cx="${pick.x.toFixed(1)}" cy="${pick.y.toFixed(1)}" r="6.5" fill="${CYAN}" />
+    <line x1="${(pick.x + lensR * 0.68).toFixed(1)}" y1="${(pick.y + lensR * 0.68).toFixed(1)}" x2="${(pick.x + lensR * 1.35).toFixed(1)}" y2="${(pick.y + lensR * 1.35).toFixed(1)}" stroke="${CYAN}" stroke-width="5" stroke-linecap="round" />
   `;
+  return dots + lens;
 }
 
-function computeStreams(positions) {
+function computeFinds(positions) {
   const mid = (BAND.min + BAND.max) / 2;
   return positions.slice(0, -1).map((p, i) => {
     const side = p.x < mid ? 1 : -1;
-    return { x: clamp(p.x + side * 90, BAND.min + 25, BAND.max - 25), y: p.y, seed: i + 1 };
+    return { x: clamp(p.x + side * 85, BAND.min + 35, BAND.max - 35), y: p.y, seed: i + 1 };
   });
 }
 
-function renderStreams(positions) {
-  return computeStreams(positions)
-    .map(({ x, y, seed }) => renderDataStream(x, y, seed))
+function renderFinds(positions) {
+  return computeFinds(positions)
+    .map(({ x, y, seed }) => renderScatterFind(x, y, seed))
     .join("");
-}
-
-// A diver's own descending line, planted once down the trail's own
-// center rather than at every stop — the surface (the trail) connected
-// down to the depths this whole theme is about.
-function renderDiveLine(x, totalHeight) {
-  return `<path d="M${x},0 L${x},${totalHeight}" stroke="${CYAN}" stroke-width="2" stroke-dasharray="1 6" fill="none" opacity="0.35" />`;
 }
 
 function renderScene(positions, totalHeight, bossName) {
@@ -65,12 +65,11 @@ function renderScene(positions, totalHeight, bossName) {
 
   return `
     <svg viewBox="0 0 ${COL_W} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" class="lesson-terrain-svg" role="img"
-      aria-label="A corner of Lab Archipelago's Data Deck: a server-room floor where a column of data figures streams down at every stop, one value circled and pulled out, connecting every Data Diver lesson up to ${bossName}'s own clearing">
+      aria-label="A corner of Lab Archipelago's Data Deck: a server-room floor where a scatter of data points sits at every stop, one singled out under a magnifying glass, connecting every Data Diver lesson up to ${bossName}'s own clearing">
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="${FLOOR}" />
-      ${renderDiveLine(last.x, totalHeight)}
       ${bossClearing}
       <path d="${renderTrailPath(positions)}" stroke="${AMBER}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 14" fill="none" opacity="0.7" />
-      <g>${renderStreams(positions)}</g>
+      <g>${renderFinds(positions)}</g>
     </svg>
   `;
 }

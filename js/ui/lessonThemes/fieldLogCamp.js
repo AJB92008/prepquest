@@ -1,9 +1,13 @@
 // Lab Log's own theme (see lessonTerrain.js for the shared engine every
 // lesson-path theme renders through) — Field Station's own grassy
-// research camp, a numbered logbook post standing at every stop (step
-// 1, step 2, step 3...) — Research Summaries passages are exactly this,
-// a numbered procedure read start to finish, so the trail itself counts
-// up the same way. Shares its grass/tent styling with
+// research camp, an open field notebook propped on an easel at every
+// stop, its checklist filling in one more line each time (step 1, step
+// 2, step 3...) — Research Summaries passages are exactly this, a
+// numbered procedure read start to finish, so the trail itself counts
+// up the same way. An earlier version of this file used a wooden
+// signpost with a small clipboard instead — replaced because it didn't
+// look good, not because the underlying "counts up one step at a time"
+// idea was wrong. Shares its grass/tent styling with
 // variableVaultPlots.js (Variable Vault, sc-investigation's own theme,
 // same Field Station zone — see scienceHub.js's own ZONES), kept a
 // separate self-contained file per this folder's own convention.
@@ -22,20 +26,33 @@ function renderTentSmall(x, y, seed) {
   `;
 }
 
-// A numbered clipboard post — the "step N" idea drawn literally, one
-// per lesson stop, counting up the whole way down.
-function renderLogPost(x, y, step) {
+// An open notebook on an easel, its own checklist filling in one more
+// checked line per step — the "step N" idea drawn as an actual
+// in-progress log rather than a static numbered sign.
+function renderFieldNotebook(x, y, step) {
+  const rows = Math.min(step, 5);
+  const rings = [0, 1, 2, 3, 4].map((i) => `<circle cx="${x - 15 + i * 7.5}" cy="${y - 27}" r="1.8" fill="none" stroke="#a89468" stroke-width="1.2" />`).join("");
+  const lines = Array.from({ length: 5 }, (_, i) => {
+    const ly = y - 19 + i * 5.5;
+    const checked = i < rows;
+    return `
+      <line x1="${x - 13}" y1="${ly}" x2="${x - 2}" y2="${ly}" stroke="#c2b48c" stroke-width="1.2" />
+      ${checked ? `<path d="M${x - 1},${ly - 0.5} l1.6,1.8 l3.4,-4.2" stroke="${GREEN}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />` : ""}
+    `;
+  }).join("");
   return `
-    <ellipse cx="${x}" cy="${y + 30}" rx="14" ry="5" fill="rgba(20,40,10,0.18)" />
-    <rect x="${x - 3}" y="${y - 4}" width="6" height="30" fill="#7a6a48" />
-    <rect x="${x - 17}" y="${y - 26}" width="34" height="26" rx="2" fill="#f4ecd8" stroke="#a89468" stroke-width="2" />
-    <line x1="${x - 12}" y1="${y - 18}" x2="${x + 6}" y2="${y - 18}" stroke="#a89468" stroke-width="1.5" />
-    <line x1="${x - 12}" y1="${y - 12}" x2="${x + 10}" y2="${y - 12}" stroke="#a89468" stroke-width="1.5" />
-    <text x="${x}" y="${y - 2}" font-size="14" font-weight="700" text-anchor="middle" fill="${GREEN}">${step}</text>
+    <ellipse cx="${x}" cy="${y + 25}" rx="17" ry="5" fill="rgba(20,40,10,0.16)" />
+    <line x1="${x - 15}" y1="${y + 23}" x2="${x - 4}" y2="${y - 7}" stroke="#7a6a48" stroke-width="2.2" />
+    <line x1="${x + 15}" y1="${y + 23}" x2="${x + 4}" y2="${y - 7}" stroke="#7a6a48" stroke-width="2.2" />
+    <rect x="${x - 18}" y="${y - 29}" width="36" height="30" rx="2" fill="#f7f2e4" stroke="#a89468" stroke-width="2" />
+    ${rings}
+    ${lines}
+    <circle cx="${x + 16}" cy="${y - 26}" r="8" fill="${GREEN}" />
+    <text x="${x + 16}" y="${y - 22.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#f7f2e4">${step}</text>
   `;
 }
 
-function computeLogPosts(positions) {
+function computeNotebooks(positions) {
   const mid = (BAND.min + BAND.max) / 2;
   return positions.slice(0, -1).map((p, i) => {
     const side = p.x < mid ? 1 : -1;
@@ -43,9 +60,9 @@ function computeLogPosts(positions) {
   });
 }
 
-function renderLogPosts(positions) {
-  return computeLogPosts(positions)
-    .map(({ x, y, step }) => renderLogPost(x, y, step))
+function renderNotebooks(positions) {
+  return computeNotebooks(positions)
+    .map(({ x, y, step }) => renderFieldNotebook(x, y, step))
     .join("");
 }
 
@@ -64,12 +81,12 @@ function renderScene(positions, totalHeight, bossName) {
 
   return `
     <svg viewBox="0 0 ${COL_W} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" class="lesson-terrain-svg" role="img"
-      aria-label="A corner of Lab Archipelago's Field Station: a grassy research camp with a numbered logbook post at every stop counting up one step at a time, connecting every Lab Log lesson up to ${bossName}'s own clearing">
+      aria-label="A corner of Lab Archipelago's Field Station: a grassy research camp with an open notebook on an easel at every stop, its checklist filling in one more line each time, connecting every Lab Log lesson up to ${bossName}'s own clearing">
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="${GRASS}" />
       <g>${renderTents(totalHeight)}</g>
       ${bossClearing}
       <path d="${renderTrailPath(positions)}" stroke="${GREEN}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 14" fill="none" opacity="0.8" />
-      <g>${renderLogPosts(positions)}</g>
+      <g>${renderNotebooks(positions)}</g>
     </svg>
   `;
 }

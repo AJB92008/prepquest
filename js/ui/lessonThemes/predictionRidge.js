@@ -13,6 +13,11 @@ const NIGHT = "#101a30";
 const BLUE = "#8fa8d6";
 const GOLD = "#f0d97a";
 
+function pseudoRandom(seed) {
+  const x = Math.sin(seed * 12.9898 + 3.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
 function renderStars(totalHeight) {
   const count = Math.max(20, Math.round((totalHeight / COL_W) * 22));
   return Array.from({ length: count }, (_, i) => {
@@ -53,22 +58,29 @@ function renderTrajectory(tipX, tipY, targetX, targetY) {
   `;
 }
 
+// Side, offset distance, and tilt are all independently randomized
+// (rather than side/offset both being a fixed function of which half of
+// the trail band the point fell in) so consecutive telescopes don't all
+// mirror each other into the same two poses — an earlier version of
+// this file looked too regular precisely because those three things all
+// moved together.
 function computeStations(positions) {
-  const mid = (BAND.min + BAND.max) / 2;
   return positions.slice(0, -1).map((p, i) => {
-    const side = p.x < mid ? 1 : -1;
-    const x = clamp(p.x + side * 75, BAND.min + 25, BAND.max - 25);
-    const tilt = 25 + ((i * 37) % 30);
-    return { x, y: p.y, tilt, side };
+    const side = pseudoRandom(i * 3 + 1) > 0.5 ? 1 : -1;
+    const offset = 45 + pseudoRandom(i * 5 + 2) * 65;
+    const x = clamp(p.x + side * offset, BAND.min + 25, BAND.max - 25);
+    const tilt = 12 + pseudoRandom(i * 7 + 3) * 75;
+    return { x, y: p.y, tilt, side, seed: i };
   });
 }
 
 function renderStations(positions) {
   return computeStations(positions)
-    .map(({ x, y, tilt, side }) => {
+    .map(({ x, y, tilt, side, seed }) => {
       const { body, tipX, tipY } = renderTelescopeSmall(x, y, tilt);
-      const targetX = clamp(tipX + side * 40, 20, COL_W - 20);
-      const targetY = tipY - 30;
+      const targetDist = 22 + pseudoRandom(seed * 11 + 5) * 48;
+      const targetX = clamp(tipX + side * targetDist, 20, COL_W - 20);
+      const targetY = tipY - 12 - pseudoRandom(seed * 17 + 9) * 40;
       return body + renderTrajectory(tipX, tipY, targetX, targetY);
     })
     .join("");
