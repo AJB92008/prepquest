@@ -170,7 +170,24 @@
 // tools — a compass, a spyglass, a logbook (method) — on the other,
 // the whole way down. That's all ten of Athenaeum Reef's skills — see
 // readingHub.js's ZONES for how each pair maps to that zone's own
-// legend entry. Add a
+// legend entry. Lab Archipelago's own three zones share one visual
+// environment per zone rather than a distinct concept per skill (see
+// scienceHub.js's own ZONES) — a narrower, more literal set of zone
+// identities than Reading's five reef zones, so one setting per zone
+// with a skill-specific focal feature reads better than six unrelated
+// ideas would: Data Deck's own server-room floor gets a monitor
+// screen at every stop for Graph Gazer (a different real chart type
+// each time — bar, line, scatter, pie) and a column of streaming data
+// figures with one value circled for Data Diver (pulling a value out,
+// not just reading a chart); Field Station's own grassy research camp
+// gets a numbered logbook post counting up at every stop for Lab Log
+// (a step-by-step procedure, read start to finish) and a fenced test
+// plot holding one plain "control" sprout beside a taller "variable"
+// one for Variable Vault; Observatory Ridge's own night sky gets two
+// rival orbit diagrams squared off on opposite sides of the trail for
+// Theory Throwdown (competing models of the same system) and a
+// telescope aimed along a dashed predicted trajectory toward a target
+// star for Prediction Station. Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
 // engine.
@@ -228,6 +245,12 @@ import { beaconSweepTheme } from "./lessonThemes/beaconSweep.js";
 import { tidelineGlossaryTheme } from "./lessonThemes/tidelineGlossary.js";
 import { mosaicRuinsTheme } from "./lessonThemes/mosaicRuins.js";
 import { captainsQuartersTheme } from "./lessonThemes/captainsQuarters.js";
+import { graphGazerDeckTheme } from "./lessonThemes/graphGazerDeck.js";
+import { dataDiveDeckTheme } from "./lessonThemes/dataDiveDeck.js";
+import { fieldLogCampTheme } from "./lessonThemes/fieldLogCamp.js";
+import { variableVaultPlotsTheme } from "./lessonThemes/variableVaultPlots.js";
+import { theoryOrbitTheme } from "./lessonThemes/theoryOrbit.js";
+import { predictionRidgeTheme } from "./lessonThemes/predictionRidge.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -283,6 +306,12 @@ export const LESSON_THEMES = {
   "re-vocab": tidelineGlossaryTheme,
   "re-generalize": mosaicRuinsTheme,
   "re-voice": captainsQuartersTheme,
+  "sc-datarep": graphGazerDeckTheme,
+  "sc-interpret": dataDiveDeckTheme,
+  "sc-research": fieldLogCampTheme,
+  "sc-investigation": variableVaultPlotsTheme,
+  "sc-conflicting": theoryOrbitTheme,
+  "sc-evaluate": predictionRidgeTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
