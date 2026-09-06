@@ -45,7 +45,7 @@ import { monsterSVG } from "./monster.js";
 import { getBossMonster } from "../data/bossMonsters.js";
 import { getLessonCount } from "../data/questions/index.js";
 import { glowVars } from "./pathTrail.js";
-import { CENTER, BOSS_POS, BOSS_TRIGGER_RADIUS, WORLD_W, WORLD_H, WALK_MARGIN, renderWorldSvg, wireMovement, wireFullscreenToggle, joystickHTML } from "./hubWorld.js";
+import { CENTER, BOSS_POS, BOSS_TRIGGER_RADIUS, WORLD_W, WORLD_H, WALK_MARGIN, renderWorldSvg, organicRingPoints, wireMovement, wireFullscreenToggle, joystickHTML } from "./hubWorld.js";
 import { closedBlobPath } from "./lessonTerrain.js";
 
 const SKILL_TRIGGER_RADIUS = 58;
@@ -474,13 +474,46 @@ function renderCauseway(ax, ay, bx, by, width = 56) {
   return `<path d="${d}" fill="${SAND}" />`;
 }
 
+// Background Knowledge and the boss are single points, not clusters of
+// skill nodes like the three topic islands above — a circular islet
+// (organicRingPoints, same technique islandHub.js's own renderVocabIslet
+// and readingHub.js's own boss islet use) fits a single point better
+// than the rect-based organicIslandPoints those three use. Two colors:
+// a pale "reference desk" cream for the landmark, dark slate for the
+// boss's own lair — both still sand-outer/fill-inner like renderIsland.
+const LANDMARK_FILL = "#e8e1c8";
+const BOSS_ISLET_FILL = "#332f42";
+const BOSS_ISLET_STROKE = "#1f1c2b";
+
+function renderCircularIslet(pos, radius, fill, seed, stroke) {
+  const outerPts = organicRingPoints(pos, radius + 24, seed, 40, [0, 0.14]);
+  const innerPts = organicRingPoints(pos, radius - 16, seed, 40, [0, 0.14]);
+  const strokeAttr = stroke ? ` stroke="${stroke}" stroke-width="4"` : "";
+  return `<path d="${closedBlobPath(outerPts)}" fill="${SAND}" /><path d="${closedBlobPath(innerPts)}" fill="${fill}"${strokeAttr} />`;
+}
+
+// A dark warning beacon for the boss's own islet — same "small
+// hand-placed prop sells the terrain" idea as this file's own Data
+// Deck/Field Station/Observatory props (see ISLAND_BIOMES above), just
+// ominous instead of friendly, echoing mathHub.js's own renderWatchtower
+// for its own boss island.
+function renderWarningBeacon(x, y) {
+  return `
+    <ellipse cx="${x}" cy="${y + 26}" rx="16" ry="6" fill="rgba(0,0,0,0.3)" />
+    <rect x="${x - 7}" y="${y - 20}" width="14" height="46" fill="#232030" stroke="#14121c" stroke-width="1.5" />
+    <path d="M${x - 13},${y - 20} L${x},${y - 34} L${x + 13},${y - 20} Z" fill="#2c2838" stroke="#14121c" stroke-width="1.5" />
+    <circle cx="${x}" cy="${y - 34}" r="4.5" fill="#e8564a" opacity="0.9" />
+  `;
+}
+
 // The three islands, spaced apart with shoreline padding shrunk (only on
 // the side facing a neighbor) so they never overlap — see safeShorePad
-// above. No boss island here (compare mathHub.js's own renderMathRegions):
-// this hub's open water is walkable ground regardless, and the boss
-// still sits on hubWorld.js's own default dark clearing — but a sand
-// causeway between each adjacent pair of islands now connects them, so
-// the crossing itself doesn't read as walking on open water.
+// above. Plus the Background Knowledge landmark's own islet and the
+// boss's own islet, each connected into the same causeway chain as the
+// topic islands (nearest topic island -> landmark -> boss) rather than
+// left to float in open water on their own — see this file's own header
+// comment on why these causeways (like the topic-to-topic ones) are pure
+// visual dressing rather than load-bearing the way Numeria Peaks' are.
 function renderScienceRegions(zoneGroups) {
   const boxes = zoneGroups.map(({ points }) => {
     if (!points.length) return null;
@@ -506,6 +539,17 @@ function renderScienceRegions(zoneGroups) {
   const presentBoxes = boxes.filter(Boolean);
   const causewaysMarkup = presentBoxes.slice(0, -1).map((box, i) => renderCauseway(box.x1, box.cy, presentBoxes[i + 1].x0, presentBoxes[i + 1].cy)).join("");
 
+  // Whichever topic island sits horizontally closest to the landmark
+  // (same "closest neighbor" rule mathHub.js's own boss causeway uses)
+  // continues the chain down into it, then straight on to the boss —
+  // center-to-center is fine for both since each island/islet is drawn
+  // afterward and simply covers whatever causeway reaches into it.
+  const nearestToLandmark = presentBoxes.length
+    ? presentBoxes.reduce((best, b) => (Math.abs(b.cx - LANDMARK_POS.x) < Math.abs(best.cx - LANDMARK_POS.x) ? b : best))
+    : null;
+  const landmarkCauseway = nearestToLandmark ? renderCauseway(nearestToLandmark.cx, nearestToLandmark.y1, LANDMARK_POS.x, LANDMARK_POS.y) : "";
+  const bossCauseway = renderCauseway(LANDMARK_POS.x, LANDMARK_POS.y, BOSS_POS.x, BOSS_POS.y);
+
   const islands = zoneGroups
     .map(({ zone }, i) => {
       const bbox = boxes[i];
@@ -516,7 +560,10 @@ function renderScienceRegions(zoneGroups) {
     })
     .join("");
 
-  return causewaysMarkup + islands;
+  const landmarkIslet = renderCircularIslet(LANDMARK_POS, 110, LANDMARK_FILL, 50);
+  const bossIslet = renderCircularIslet(BOSS_POS, 150, BOSS_ISLET_FILL, 99, BOSS_ISLET_STROKE) + renderWarningBeacon(BOSS_POS.x, BOSS_POS.y - 10);
+
+  return causewaysMarkup + landmarkCauseway + bossCauseway + islands + landmarkIslet + bossIslet;
 }
 
 // Each zone's own nodes get connected in the order they were placed,
@@ -592,10 +639,19 @@ export function renderScienceHub(root, navigate, subject) {
 
   const sceneSvg = renderWorldSvg(layout, {
     ariaLabel:
-      "Lab Archipelago, an archipelago of separate islands floating in open water — a data deck, a field station, and an observatory ridge — connected by sand causeways, each with its own trail of science skills, plus a dark path south to the boss's own clearing",
+      "Lab Archipelago, an archipelago of separate islands floating in open water — a data deck, a field station, and an observatory ridge — each with its own trail of science skills, connected by sand causeways down through the Background Knowledge islet to the boss's own island",
     landmass: renderScienceBackdrop,
     regionShapes: renderScienceRegions,
     trails: renderScienceTrails,
+    // No dashed bossBridge line — the sand causeway (renderScienceRegions'
+    // own landmarkCauseway/bossCauseway) already connects the nearest
+    // topic island straight through the landmark to the boss's own
+    // island; a second, differently-styled dark dashed path drawn on top
+    // of that real bridge (plus hubWorld.js's own default soft dark lair
+    // glow, sized for a boss with no island of its own underneath it)
+    // read as redundant clutter rather than a deliberate cue. Same fix
+    // mathHub.js's own renderMathHub uses for the identical reason.
+    bossBridge: () => "",
   });
 
   root.innerHTML = `
