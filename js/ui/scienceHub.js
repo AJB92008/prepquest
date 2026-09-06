@@ -59,9 +59,9 @@ const LANDMARK_TRIGGER_RADIUS = 150;
 // this field even though renderScienceRegions (this file's own
 // regionShapes override) never calls it.
 const ZONES = [
-  { id: "datadeck", name: "Data Deck", categories: ["iod"], fill: "#e8b84f", decorations: [] },
-  { id: "fieldstation", name: "Field Station", categories: ["sin"], fill: "#8fb86a", decorations: [] },
-  { id: "observatory", name: "Observatory Ridge", categories: ["emi"], fill: "#6f8fc9", decorations: [] },
+  { id: "datadeck", name: "Data Deck", categories: ["iod"], fill: "#e8b84f", decorations: [], description: "Tables, graphs & data trends" },
+  { id: "fieldstation", name: "Field Station", categories: ["sin"], fill: "#8fb86a", decorations: [], description: "Experiments & variables" },
+  { id: "observatory", name: "Observatory Ridge", categories: ["emi"], fill: "#6f8fc9", decorations: [], description: "Competing theories & predictions" },
 ];
 
 function pseudoRandom(seed) {
@@ -580,6 +580,29 @@ function renderScienceTrails(zoneGroups) {
     .join("");
 }
 
+// Same legend readingHub.js's/mathHub.js's own hubs use — a swatch per
+// zone naming what it actually covers, since the zone names themselves
+// (Data Deck, Field Station, Observatory Ridge) don't say that on their
+// own.
+function renderLegend() {
+  return `
+    <div class="hub-legend" aria-hidden="true">
+      <p class="hub-legend-title">Island regions</p>
+      ${ZONES.map(
+        (zone) => `
+        <div class="hub-legend-row">
+          <span class="hub-legend-swatch" style="background:${zone.fill}"></span>
+          <span>
+            <span class="hub-legend-name">${zone.name}</span><br>
+            <span class="hub-legend-desc">${zone.description}</span>
+          </span>
+        </div>
+      `
+      ).join("")}
+    </div>
+  `;
+}
+
 function renderSkillMarker({ item: skill, x, y }, subject) {
   const progress = gameState.getSkillProgress(skill.id);
   const totalLessons = getLessonCount(skill.id);
@@ -662,6 +685,7 @@ export function renderScienceHub(root, navigate, subject) {
       <p class="map-subtitle hub-hint" id="hubHint">🧭 Walk your monster with WASD (or the joystick) across the islands — every trail leads to a skill</p>
       <div class="hub-viewport" id="hubViewport">
         <button class="hub-fullscreen-btn" id="hubFullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
+        ${renderLegend()}
         ${joystickHTML("hubJoystick")}
         <div class="hub-world" id="hubWorld" style="width:${WORLD_W}px;height:${WORLD_H}px;">
           ${sceneSvg}
