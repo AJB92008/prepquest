@@ -15,17 +15,21 @@
 // unrelated, same reasoning mathHub.js's own header gives for not
 // sharing with islandHub.js.
 //
-// Unlike Numeria Peaks, this archipelago's islands aren't the avatar's
-// only walkable ground — there's no point-in-polygon collision here, so
-// the open water between islands (renderScienceBackdrop) is just as
-// walkable as the islands themselves, the same open-world model
-// Wordwood Isle/Athenaeum Reef use. The sand causeways between islands
-// (renderCauseway, called from renderScienceRegions) are therefore pure
-// visual dressing, not load-bearing the way Numeria Peaks' own causeways
-// are (that hub's real point-in-polygon collision means removing one of
-// its causeways would actually cut off travel) — here they exist so open
-// water doesn't ask the player to walk across the sea in-character, not
-// because the game would otherwise strand them.
+// Real point-in-polygon collision, same as Numeria Peaks: the avatar's
+// own walkable ground is exactly the rendered sand shore — every island,
+// islet, and causeway (renderCauseway, called from renderScienceRegions)
+// is painted in the shared SAND color, so hubWorld.js's own
+// buildShorelinePolygons picks each one up automatically as its own
+// walkable polygon, with zero extra bookkeeping to keep it in sync with
+// the actual art. This used to be an open-world hub with no collision at
+// all — the ocean was just as walkable as the islands, and the
+// causeways existed purely so the water didn't *look* uncrossable while
+// the avatar could in fact walk anywhere, per direction. Now that real
+// collision is on, every route the player can actually walk *is* the
+// rendered art, so the causeway network (including the boss's own,
+// fixed separately to no longer run through the Background Knowledge
+// landmark's trigger radius — see renderScienceRegions' own header
+// comment) has to stay genuinely connected end to end, not just look it.
 //
 // One landmark, unlike Numeria Peaks' none: ACT Science Background
 // Knowledge (Science's own reference lesson, reachable from the plain
@@ -47,7 +51,21 @@ import { monsterSVG } from "./monster.js";
 import { getBossMonster } from "../data/bossMonsters.js";
 import { getLessonCount } from "../data/questions/index.js";
 import { glowVars } from "./pathTrail.js";
-import { CENTER, BOSS_POS, BOSS_TRIGGER_RADIUS, WORLD_W, WORLD_H, WALK_MARGIN, renderWorldSvg, organicRingPoints, wireMovement, wireFullscreenToggle, joystickHTML } from "./hubWorld.js";
+import {
+  CENTER,
+  BOSS_POS,
+  BOSS_TRIGGER_RADIUS,
+  WORLD_W,
+  WORLD_H,
+  WALK_MARGIN,
+  renderWorldSvg,
+  organicRingPoints,
+  pointInPolygon,
+  buildShorelinePolygons,
+  wireMovement,
+  wireFullscreenToggle,
+  joystickHTML,
+} from "./hubWorld.js";
 import { closedBlobPath } from "./lessonTerrain.js";
 
 const SKILL_TRIGGER_RADIUS = 58;
@@ -185,6 +203,33 @@ function gridPositions(territory) {
 
 function buildLayout(territories) {
   return territories.flatMap(gridPositions);
+}
+
+// Spawns in whichever zone's own node centroid sits closest to
+// CENTER.x — that centroid is guaranteed to land inside that zone's own
+// island (nodes are always inset well within their own territory, and
+// the island's shore is drawn around that same bbox with real padding),
+// so this can't spawn the avatar in open water now that real collision
+// applies. Verbatim the same reasoning mathHub.js's own
+// computeSpawnPoint uses.
+function computeSpawnPoint(layout) {
+  const byZone = new Map();
+  for (const p of layout) {
+    if (!byZone.has(p.zone)) byZone.set(p.zone, []);
+    byZone.get(p.zone).push(p);
+  }
+  let best = null;
+  let bestDist = Infinity;
+  for (const pts of byZone.values()) {
+    const cx = pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+    const cy = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+    const dist = Math.abs(cx - CENTER.x);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { x: cx, y: cy };
+    }
+  }
+  return best || CENTER;
 }
 
 const SAND = "#ecdfb8";
@@ -689,13 +734,13 @@ export function renderScienceHub(root, navigate, subject) {
     regionShapes: renderScienceRegions,
     trails: renderScienceTrails,
     // No dashed bossBridge line — the sand causeway (renderScienceRegions'
-    // own landmarkCauseway/bossCauseway) already connects the nearest
-    // topic island straight through the landmark to the boss's own
-    // island; a second, differently-styled dark dashed path drawn on top
-    // of that real bridge (plus hubWorld.js's own default soft dark lair
-    // glow, sized for a boss with no island of its own underneath it)
-    // read as redundant clutter rather than a deliberate cue. Same fix
-    // mathHub.js's own renderMathHub uses for the identical reason.
+    // own bossCauseway) already connects the nearest topic island
+    // straight to the boss's own island; a second, differently-styled
+    // dark dashed path drawn on top of that real bridge (plus
+    // hubWorld.js's own default soft dark lair glow, sized for a boss
+    // with no island of its own underneath it) read as redundant clutter
+    // rather than a deliberate cue. Same fix mathHub.js's own
+    // renderMathHub uses for the identical reason.
     bossBridge: () => "",
   });
 
@@ -736,19 +781,28 @@ export function renderScienceHub(root, navigate, subject) {
 
   const unwireFullscreen = wireFullscreenToggle(root.querySelector("#hubViewport"), root.querySelector("#hubFullscreenBtn"));
 
+  // The avatar's walkable ground is exactly the rendered sand shore —
+  // every island, islet, and causeway (all painted in SAND, see this
+  // file's own header comment) — built fresh off the live DOM (after
+  // root.innerHTML above), so it can never drift out of sync with
+  // whatever this render actually drew.
+  const shorePolygons = buildShorelinePolygons(root);
+  const isWalkable = (px, py) => shorePolygons.some((poly) => pointInPolygon(px, py, poly));
+
   const stopMovement = wireMovement({
     avatarEl: root.querySelector("#hubAvatar"),
     worldEl: root.querySelector("#hubWorld"),
     viewportEl: root.querySelector("#hubViewport"),
     hintEl: root.querySelector("#hubHint"),
     joystickEl: root.querySelector("#hubJoystick"),
-    // 800 + 100 = 900: far enough south of the islands' own bottom edge
-    // (they cluster around y~325-845) to spawn on open ground, and far
-    // enough from LANDMARK_POS (straight-line distance ~405px, well past
-    // its own 150px trigger radius) that spawning here can't fire that
-    // trigger the instant the avatar takes a single step, before the
-    // player has any chance to walk elsewhere.
-    spawn: { x: CENTER.x, y: CENTER.y + 100 },
+    // computeSpawnPoint guarantees solid ground now that real collision
+    // applies — a fixed world coordinate (this hub's own previous
+    // approach, before collision) can't make that guarantee, since
+    // whether any given point happens to fall inside an island depends
+    // on real skill counts and layout, not just roughly where the
+    // islands tend to cluster.
+    spawn: computeSpawnPoint(layout),
+    isWalkable,
     targets: [
       { x: LANDMARK_POS.x, y: LANDMARK_POS.y, radius: LANDMARK_TRIGGER_RADIUS, onArrive: () => goTo("background", { subjectId: subject.id }) },
       { x: BOSS_POS.x, y: BOSS_POS.y, radius: BOSS_TRIGGER_RADIUS, gate: () => allMastered, onArrive: () => goTo("bossQuiz", { subjectId: subject.id }) },
