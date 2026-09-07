@@ -31,13 +31,15 @@
 // Knowledge (Science's own reference lesson, reachable from the plain
 // island list's own reference card before this hub existed — see
 // island.js's history) still needs a real entry point, so it gets its
-// own marker on the path down to the boss, the same "walk onto it to
+// own marker south of the three islands, the same "walk onto it to
 // open it" treatment islandHub.js's/readingHub.js's own landmarks use.
-// It sits south of the three islands rather than at the world's raw
-// CENTER, since CENTER falls inside Field Station's own territory here
-// (unlike Wordwood Isle's round layout, where every zone radiates out
-// from CENTER and a landmark there sits naturally in the middle of all
-// of them). No goat/dev-mode easter egg — that unlock lives on
+// Deliberately off CENTER.x (== BOSS_POS.x) rather than directly below
+// the islands on that same line — its own 150px trigger radius would
+// otherwise sit right across the boss's own straight-down approach, so
+// reaching the boss on foot meant walking through the landmark's
+// trigger first and getting redirected there instead (see
+// renderScienceRegions' own comment on this same bug). No goat/dev-mode
+// easter egg — that unlock lives on
 // Wordwood Isle only.
 import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
@@ -509,11 +511,24 @@ function renderWarningBeacon(x, y) {
 // The three islands, spaced apart with shoreline padding shrunk (only on
 // the side facing a neighbor) so they never overlap — see safeShorePad
 // above. Plus the Background Knowledge landmark's own islet and the
-// boss's own islet, each connected into the same causeway chain as the
-// topic islands (nearest topic island -> landmark -> boss) rather than
-// left to float in open water on their own — see this file's own header
-// comment on why these causeways (like the topic-to-topic ones) are pure
-// visual dressing rather than load-bearing the way Numeria Peaks' are.
+// boss's own islet, each connected to whichever topic island sits
+// closest to it — see this file's own header comment on why these
+// causeways (like the topic-to-topic ones) are pure visual dressing
+// rather than load-bearing the way Numeria Peaks' are.
+//
+// The boss's own causeway connects straight from its nearest topic
+// island, *not* by way of the landmark (an earlier version chained
+// topic -> landmark -> boss in one straight line) — LANDMARK_POS sits
+// on the same x as BOSS_POS, so that chain put the boss's own approach
+// directly through the landmark's own 150px trigger radius the whole
+// way down. wireMovement's checkArrivals fires the *first* target
+// whose radius contains the avatar every frame, so walking that
+// "causeway" from any topic island got hijacked into the Background
+// Knowledge screen long before reaching the boss's own trigger —
+// reaching the boss on foot was never actually possible. Moving
+// LANDMARK_POS off that x (see its own definition below) and giving
+// the boss its own independent causeway fixes this for good, not just
+// for the current island layout.
 function renderScienceRegions(zoneGroups) {
   const boxes = zoneGroups.map(({ points }) => {
     if (!points.length) return null;
@@ -539,16 +554,18 @@ function renderScienceRegions(zoneGroups) {
   const presentBoxes = boxes.filter(Boolean);
   const causewaysMarkup = presentBoxes.slice(0, -1).map((box, i) => renderCauseway(box.x1, box.cy, presentBoxes[i + 1].x0, presentBoxes[i + 1].cy)).join("");
 
-  // Whichever topic island sits horizontally closest to the landmark
-  // (same "closest neighbor" rule mathHub.js's own boss causeway uses)
-  // continues the chain down into it, then straight on to the boss —
-  // center-to-center is fine for both since each island/islet is drawn
-  // afterward and simply covers whatever causeway reaches into it.
-  const nearestToLandmark = presentBoxes.length
-    ? presentBoxes.reduce((best, b) => (Math.abs(b.cx - LANDMARK_POS.x) < Math.abs(best.cx - LANDMARK_POS.x) ? b : best))
-    : null;
+  // Two independent spurs, not one chain — whichever topic island sits
+  // horizontally closest to the landmark gets one causeway, and
+  // whichever sits closest to the boss (almost always a different
+  // island, now that LANDMARK_POS and BOSS_POS no longer share an x)
+  // gets its own separate one straight to the boss. Center-to-center is
+  // fine for both since each island/islet is drawn afterward and simply
+  // covers whatever causeway reaches into it.
+  const nearestTo = (pos) => (presentBoxes.length ? presentBoxes.reduce((best, b) => (Math.abs(b.cx - pos.x) < Math.abs(best.cx - pos.x) ? b : best)) : null);
+  const nearestToLandmark = nearestTo(LANDMARK_POS);
+  const nearestToBoss = nearestTo(BOSS_POS);
   const landmarkCauseway = nearestToLandmark ? renderCauseway(nearestToLandmark.cx, nearestToLandmark.y1, LANDMARK_POS.x, LANDMARK_POS.y) : "";
-  const bossCauseway = renderCauseway(LANDMARK_POS.x, LANDMARK_POS.y, BOSS_POS.x, BOSS_POS.y);
+  const bossCauseway = nearestToBoss ? renderCauseway(nearestToBoss.cx, nearestToBoss.y1, BOSS_POS.x, BOSS_POS.y) : "";
 
   const islands = zoneGroups
     .map(({ zone }, i) => {
@@ -619,11 +636,16 @@ function renderSkillMarker({ item: skill, x, y }, subject) {
   `;
 }
 
-// South of the three islands, along the same north-south line as the
-// default dark path to the boss (hubWorld.js draws that path from raw
-// CENTER, which sits at this same x) — reads as a waypoint on the way
-// to the boss rather than a stray marker in open space.
-const LANDMARK_POS = { x: CENTER.x, y: 1150 };
+// South of the three islands, but offset well clear of CENTER.x (where
+// BOSS_POS also sits) — this used to sit right on that line, which put
+// the landmark's own trigger radius directly across the only straight
+// path to the boss (see renderScienceRegions' own comment on the bug
+// this caused: reaching the boss on foot wasn't actually possible,
+// since walking down that "causeway" got hijacked into the Background
+// Knowledge screen first, every time). 320px clear of CENTER.x is more
+// than the landmark's own 150px trigger radius plus real margin, so the
+// boss's own straight-down approach never comes near it.
+const LANDMARK_POS = { x: CENTER.x - 320, y: 1150 };
 
 function renderLandmarkMarker() {
   return `
@@ -662,7 +684,7 @@ export function renderScienceHub(root, navigate, subject) {
 
   const sceneSvg = renderWorldSvg(layout, {
     ariaLabel:
-      "Lab Archipelago, an archipelago of separate islands floating in open water — a data deck, a field station, and an observatory ridge — each with its own trail of science skills, connected by sand causeways down through the Background Knowledge islet to the boss's own island",
+      "Lab Archipelago, an archipelago of separate islands floating in open water — a data deck, a field station, and an observatory ridge — each with its own trail of science skills, connected by sand causeways, with separate causeways south to a Background Knowledge islet and to the boss's own island",
     landmass: renderScienceBackdrop,
     regionShapes: renderScienceRegions,
     trails: renderScienceTrails,
@@ -722,11 +744,10 @@ export function renderScienceHub(root, navigate, subject) {
     joystickEl: root.querySelector("#hubJoystick"),
     // 800 + 100 = 900: far enough south of the islands' own bottom edge
     // (they cluster around y~325-845) to spawn on open ground, and far
-    // enough north of LANDMARK_POS (1150) that the 150px landmark trigger
-    // radius doesn't reach all the way back up to the spawn point itself
-    // (900 to 1150 is a 250px gap) — spawning inside a trigger's own
-    // radius would fire that trigger the instant the avatar takes a
-    // single step, before the player has any chance to walk elsewhere.
+    // enough from LANDMARK_POS (straight-line distance ~405px, well past
+    // its own 150px trigger radius) that spawning here can't fire that
+    // trigger the instant the avatar takes a single step, before the
+    // player has any chance to walk elsewhere.
     spawn: { x: CENTER.x, y: CENTER.y + 100 },
     targets: [
       { x: LANDMARK_POS.x, y: LANDMARK_POS.y, radius: LANDMARK_TRIGGER_RADIUS, onArrive: () => goTo("background", { subjectId: subject.id }) },
