@@ -333,20 +333,43 @@ function renderIsland(bbox, fill, seed, outerPad = DEFAULT_SHORE_PAD) {
 // Scatters `count` points in the open ring between a zone's tight node
 // bbox and its own shoreline — same technique as mathHub.js's own
 // ringPositions, so biome props land on solid ground around the nodes
-// rather than on top of them or out past the shoreline.
-function ringPositions(bbox, count, seedBase, minPad, maxPad) {
+// rather than on top of them or out past the shoreline. That "rather
+// than on top of them" guarantee didn't actually hold for a 2-skill
+// zone (every Science zone): 2 nodes placed in a single row (see
+// gridPositions' own `rows` logic — a row count is only forced up to 3
+// for n>=3 skills) give the bbox a near-zero height, so the ring's own
+// vertical spread collapses to almost nothing right at the nodes' own
+// row — props kept landing on or immediately behind the actual skill
+// markers. `avoidPoints` (each zone's own real node positions, not just
+// their bbox) fixes this at the source: whenever a candidate lands
+// within `avoidRadius` of an actual node, it's pushed straight *outward
+// along its own ring angle* (away from the zone center, same direction
+// the ring already scatters props toward the shore) rather than shoved
+// in an arbitrary direction — that keeps every prop's own final
+// position bounded by the same shore-relative pad range this function
+// already respects, instead of risking a push straight out past the
+// shoreline into open water. `avoidRadius` (80) is generous enough to
+// clear not just a prop's own anchor point but its rendered reach too —
+// renderTelescope's own tube, the single worst case, can extend up to
+// ~53px from its anchor.
+function ringPositions(bbox, count, seedBase, minPad, maxPad, avoidPoints = [], avoidRadius = 80) {
   const cx = (bbox.x0 + bbox.x1) / 2;
   const cy = (bbox.y0 + bbox.y1) / 2;
   const halfW = (bbox.x1 - bbox.x0) / 2;
   const halfH = (bbox.y1 - bbox.y0) / 2;
+  const isClear = (x, y) => avoidPoints.every((node) => Math.hypot(x - node.x, y - node.y) >= avoidRadius);
   return Array.from({ length: count }, (_, i) => {
     const angle = (i / count) * Math.PI * 2 + (pseudoRandom(seedBase * 17 + i) - 0.5) * 0.9;
-    const pad = minPad + pseudoRandom(seedBase * 23 + i) * (maxPad - minPad);
-    return {
-      x: cx + Math.cos(angle) * (halfW + pad),
-      y: cy + Math.sin(angle) * (halfH + pad),
-      seed: seedBase * 31 + i + 1,
-    };
+    let pad = minPad + pseudoRandom(seedBase * 23 + i) * (maxPad - minPad);
+    let x = cx + Math.cos(angle) * (halfW + pad);
+    let y = cy + Math.sin(angle) * (halfH + pad);
+    const padCeiling = maxPad + 50;
+    while (!isClear(x, y) && pad < padCeiling) {
+      pad += 8;
+      x = cx + Math.cos(angle) * (halfW + pad);
+      y = cy + Math.sin(angle) * (halfH + pad);
+    }
+    return { x, y, seed: seedBase * 31 + i + 1 };
   });
 }
 
@@ -468,32 +491,32 @@ function renderOrbitRing(x, y, seed) {
 }
 
 const ISLAND_BIOMES = {
-  datadeck: (bbox, seedBase, ringCap) => {
+  datadeck: (bbox, seedBase, ringCap, nodePoints) => {
     const max = Math.min(90, ringCap);
     const min = Math.min(55, max - 15);
-    return ringPositions(bbox, 5, seedBase, min, max)
+    return ringPositions(bbox, 5, seedBase, min, max, nodePoints)
       .map((p, i) => (i % 3 === 0 ? renderServerTower(p.x, p.y, p.seed) : i % 3 === 1 ? renderMonitor(p.x, p.y, p.seed) : renderDishAntenna(p.x, p.y)))
       .join("");
   },
-  fieldstation: (bbox, seedBase, ringCap) => {
+  fieldstation: (bbox, seedBase, ringCap, nodePoints) => {
     const max = Math.min(90, ringCap);
     const min = Math.min(55, max - 15);
-    return ringPositions(bbox, 5, seedBase, min, max)
+    return ringPositions(bbox, 5, seedBase, min, max, nodePoints)
       .map((p, i) => (i % 3 === 0 ? renderTent(p.x, p.y, p.seed) : i % 3 === 1 ? renderPetriDish(p.x, p.y, p.seed) : renderSprout(p.x, p.y, p.seed)))
       .join("");
   },
-  observatory: (bbox, seedBase, ringCap) => {
+  observatory: (bbox, seedBase, ringCap, nodePoints) => {
     const max = Math.min(90, ringCap);
     const min = Math.min(55, max - 15);
-    return ringPositions(bbox, 5, seedBase, min, max)
+    return ringPositions(bbox, 5, seedBase, min, max, nodePoints)
       .map((p, i) => (i % 3 === 0 ? renderTelescope(p.x, p.y, p.seed) : i % 3 === 1 ? renderObservatoryDome(p.x, p.y, p.seed) : renderOrbitRing(p.x, p.y, p.seed)))
       .join("");
   },
 };
 
-function renderIslandBiome(zoneId, bbox, seedBase, ringCap) {
+function renderIslandBiome(zoneId, bbox, seedBase, ringCap, nodePoints) {
   const renderer = ISLAND_BIOMES[zoneId];
-  return renderer ? renderer(bbox, seedBase, ringCap) : "";
+  return renderer ? renderer(bbox, seedBase, ringCap, nodePoints) : "";
 }
 
 // A plain sand strip between two shoreline points — this file's own
@@ -613,12 +636,12 @@ function renderScienceRegions(zoneGroups) {
   const bossCauseway = nearestToBoss ? renderCauseway(nearestToBoss.cx, nearestToBoss.y1, BOSS_POS.x, BOSS_POS.y) : "";
 
   const islands = zoneGroups
-    .map(({ zone }, i) => {
+    .map(({ zone, points }, i) => {
       const bbox = boxes[i];
       if (!bbox) return "";
       const innerPad = innerPadFor(pads[i]);
       const ringCap = Math.max(25, Math.min(innerPad.left, innerPad.right, innerPad.top, innerPad.bottom) - 10);
-      return renderIsland(bbox, zone.fill, i + 1, pads[i]) + renderIslandBiome(zone.id, bbox, i + 1, ringCap);
+      return renderIsland(bbox, zone.fill, i + 1, pads[i]) + renderIslandBiome(zone.id, bbox, i + 1, ringCap, points);
     })
     .join("");
 
