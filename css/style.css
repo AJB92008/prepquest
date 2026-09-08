@@ -615,18 +615,24 @@ input[type="password"] {
   z-index: 1;
 }
 
-/* Small, faint background scenery (a distant ship's sail, a couple of
-   birds) — fixed near the top of the screen rather than scattered down
-   the whole path, so they read as horizon-line detail glimpsed once, not
-   as repeating decoration. Kept very low-opacity and few in number on
-   purpose: the brief here is a clean, mature scene an ACT-studying teen
-   wouldn't find twee, not a busy illustration. */
+/* Background scenery (ship sails, birds, a sun, sea life) — fixed near
+   the top of the screen rather than scattered down the whole path, so it
+   reads as horizon-line detail glimpsed once, not as repeating
+   decoration. A prior version of this kept everything at 0.32 opacity
+   and to 3 elements, reasoning that more would read as "twee" for an
+   ACT-studying teen — per direction, that read as flat and empty
+   instead, so this is a fuller scene at a less uniformly faint opacity. */
 .ocean-ambient {
   position: absolute;
   z-index: 1;
-  opacity: 0.32;
+  opacity: 0.55;
   pointer-events: none;
-  filter: saturate(0.7);
+  filter: saturate(0.75);
+}
+
+.ocean-ambient-sun {
+  opacity: 0.5;
+  filter: saturate(0.6) blur(0.5px);
 }
 
 /* The back link and subtitle normally use --muted, a mid-gray tuned for
@@ -819,6 +825,38 @@ input[type="password"] {
   height: 138px;
 }
 
+/* ACT's own World Map replacement for both .node-area-blob and the
+   plain emoji .map-island-icon — the island art (renderSubjectIslandArt
+   in worldMap.js) *is* .map-island-node--art's own face, not a second
+   icon sitting on top of a separate colored disc. Centered inside that
+   button (position:relative, see .map-island-node) the same way every
+   other absolutely-positioned decorative layer in this file centers on
+   its own parent; pointer-events:none so clicks still hit the button
+   itself, not this purely visual layer. */
+.map-island-art {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
+}
+
+/* Sized to leave a clean gap inside .map-island-node--art's own 200px
+   circle for .map-island-ring--art's band to show all the way around —
+   at 1:1 with the SVG's own 140x120 markup attributes, too little of
+   each island's own silhouette would show past the ring to actually
+   read as a distinct shape per subject. */
+.map-island-art svg {
+  width: 168px;
+  height: 144px;
+  display: block;
+}
+
+:root[data-theme="dark"] .map-island-art {
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.4));
+}
+
 .node-area-blob-md {
   width: 118px;
   height: 106px;
@@ -890,6 +928,26 @@ input[type="password"] {
 
 .map-island-node:hover {
   transform: scale(1.06);
+}
+
+/* ACT's own ocean-scene variant: the island art (renderSubjectIslandArt
+   in worldMap.js) *is* the button's own face, not a second icon layered
+   on top of a plain circular disc the way every other test's map-
+   island-node still works — background/box-shadow both dropped so
+   nothing but the art and its progress ring actually paint. Sized
+   bigger than the art itself (see .map-island-art svg below) so
+   .map-island-ring--art's own circular band shows as a clean halo all
+   the way around the island's own irregular silhouette, not clipped
+   tight against one specific shape. */
+.map-island-node--art {
+  width: 200px;
+  height: 200px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.map-island-ring--art {
+  padding: 6px;
 }
 
 .map-island-ring {

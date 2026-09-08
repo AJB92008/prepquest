@@ -14,11 +14,12 @@ const ROW_HEIGHT = 200;
 // other one. Falls back to a neutral scatter for any test id not listed
 // (there is currently no such case in practice).
 const TEST_DECORATIONS = {
-  // A couple of small, calm wave marks — sparse and low-key on purpose,
-  // since ACT's own ocean-scene background (see .ocean-scene in
-  // style.css) already carries the "water" idea; this is just a light
-  // touch, not the main event.
-  act: ["〰️", "〰️"],
+  // Wave marks plus real sea life along the path itself — a wider mix
+  // than an earlier pass at this (just 2 wave marks, reasoning that
+  // .ocean-scene's own background already carried the "water" idea on
+  // its own); per direction, the path itself reading as almost empty
+  // open water was the actual problem, not too little restraint.
+  act: ["〰️", "〰️", "🐠", "🐚", "⭐"],
   sat: ["🌕", "⭐", "🌙"],
   psat: ["🌗", "✨", "🌘"],
   stateAssessments: ["🌍", "🗺️", "✨"],
@@ -85,6 +86,70 @@ function shortcutButtonHTML(s, color, bg, badge = "") {
   `;
 }
 
+const ISLAND_SAND = "#ecdfb8";
+
+// A small, iconic island silhouette per ACT subject — one for each of
+// the 4 hub screens behind this map (islandHub.js/mathHub.js/
+// readingHub.js/scienceHub.js), so picking a subject here starts to
+// look like picking the actual island waiting on the other side, not a
+// plain colored blob under a circular button (this map's own generic
+// node-area-blob, still used as-is by every non-ACT test's map). Small
+// and iconic on purpose — these render at ~140x120px, so each is a
+// silhouette plus one or two signature details, not a scene.
+const SUBJECT_ISLAND_ART = {
+  // Wordwood Isle: a curved, ribbon-like landmass echoing its own
+  // spiral shape, with a single small tree.
+  english: (color) => `
+    <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
+      <path d="M18,72 Q8,42 34,26 Q64,6 96,20 Q122,32 112,56 Q102,82 70,88 Q38,94 18,72 Z" fill="${ISLAND_SAND}" />
+      <path d="M27,69 Q19,44 40,31 Q65,16 90,26 Q109,35 101,54 Q93,74 68,79 Q43,84 27,69 Z" fill="${color}" />
+      <path d="M58,52 L62,52 L62,44 L65,44 L59,32 L53,44 L56,44 Z" fill="#3c6b30" />
+    </svg>
+  `,
+  // Numeria Peaks: an island base topped with 3 jagged mountains.
+  math: (color) => `
+    <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
+      <path d="M14,80 Q9,50 34,36 Q60,18 90,27 Q118,36 116,60 Q114,86 86,93 Q50,100 14,80 Z" fill="${ISLAND_SAND}" />
+      <path d="M22,78 Q18,52 40,40 Q62,24 87,32 Q109,40 107,60 Q106,84 82,90 Q52,96 22,78 Z" fill="${color}" />
+      <path d="M40,62 L52,32 L64,62 Z" fill="#4a3f6b" />
+      <path d="M58,64 L72,26 L86,64 Z" fill="#3a3054" />
+      <path d="M78,62 L88,38 L98,62 Z" fill="#4a3f6b" />
+    </svg>
+  `,
+  // Athenaeum Reef: three fused, overlapping reef lobes with a tiny
+  // lighthouse, echoing the hub's own fused-lobe shape.
+  reading: (color) => `
+    <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
+      <circle cx="48" cy="58" r="32" fill="${ISLAND_SAND}" />
+      <circle cx="82" cy="52" r="30" fill="${ISLAND_SAND}" />
+      <circle cx="66" cy="80" r="27" fill="${ISLAND_SAND}" />
+      <circle cx="48" cy="58" r="25" fill="${color}" />
+      <circle cx="82" cy="52" r="23" fill="${color}" opacity="0.9" />
+      <circle cx="66" cy="80" r="20" fill="${color}" opacity="0.8" />
+      <rect x="76" y="30" width="7" height="17" fill="#e0935f" />
+      <polygon points="73,30 86,30 79.5,21" fill="#e0935f" />
+    </svg>
+  `,
+  // Lab Archipelago: two separate islands linked by a short causeway,
+  // with a tiny antenna, echoing the hub's own archipelago layout.
+  science: (color) => `
+    <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
+      <ellipse cx="44" cy="66" rx="30" ry="24" fill="${ISLAND_SAND}" />
+      <ellipse cx="98" cy="58" rx="28" ry="22" fill="${ISLAND_SAND}" />
+      <rect x="64" y="56" width="24" height="12" fill="${ISLAND_SAND}" />
+      <ellipse cx="44" cy="66" rx="21" ry="16" fill="${color}" />
+      <ellipse cx="98" cy="58" rx="19" ry="14" fill="${color}" />
+      <line x1="98" y1="46" x2="98" y2="32" stroke="#2a323e" stroke-width="2.5" />
+      <circle cx="98" cy="29" r="3.5" fill="#2a323e" />
+    </svg>
+  `,
+};
+
+function renderSubjectIslandArt(subjectId, color) {
+  const art = SUBJECT_ISLAND_ART[subjectId];
+  return art ? art(color) : "";
+}
+
 export function renderWorldMap(root, navigate, { testId } = {}) {
   // Arriving here *with* a testId (from the Solar System screen picking a
   // planet) switches the player's current planet; arriving without one
@@ -107,6 +172,11 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
   const test = getTest(activeTestId);
   const subjects = activeTestId === "stateAssessments" ? getStateSubjects(gameState.homeState) : getTestSubjects(activeTestId);
   const isReady = subjects.some(isSubjectPlayable);
+  // ACT's World Map is a dedicated ocean scene rather than the round
+  // planet-sphere every other test still uses (see .ocean-scene in
+  // style.css) — computed early so the planet nodes below can pick their
+  // own art accordingly, not just the page chrome further down.
+  const isOceanScene = activeTestId === "act";
 
   const positions = pathPositions(subjects.length, { rowHeight: ROW_HEIGHT, leftPct: 26, rightPct: 74 });
   const totalHeight = pathHeight(subjects.length, ROW_HEIGHT);
@@ -127,11 +197,22 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
       <div class="map-node-wrap" style="left:${x}%;top:${y}px;">
         ${isCurrent ? `<div class="map-mascot">${monsterSVG(gameState.getDisplayAvatar(), { size: 86 })}</div>` : ""}
         <div class="node-anchor">
-          <span class="node-area-blob node-area-blob-lg map-blob-shape-${(i % 4) + 1}" style="--blob-color:${subject.color}"></span>
-          <button class="map-island-node" data-subject="${subject.id}" aria-label="${subject.name} planet: ${stat.masteredCount} of ${stat.totalSkills} islands mastered" style="--island-color:${subject.color};--island-bg:${subject.bg};--ring-pct:${pct}%">
-            <span class="map-island-ring"></span>
-            <span class="map-island-icon" aria-hidden="true">${subject.icon}</span>
-          </button>
+          ${
+            isOceanScene
+              ? `
+                <button class="map-island-node map-island-node--art" data-subject="${subject.id}" aria-label="${subject.name} planet: ${stat.masteredCount} of ${stat.totalSkills} islands mastered" style="--island-color:${subject.color};--ring-pct:${pct}%">
+                  <span class="map-island-ring map-island-ring--art"></span>
+                  <span class="map-island-art">${renderSubjectIslandArt(subject.id, subject.color)}</span>
+                </button>
+              `
+              : `
+                <span class="node-area-blob node-area-blob-lg map-blob-shape-${(i % 4) + 1}" style="--blob-color:${subject.color}"></span>
+                <button class="map-island-node" data-subject="${subject.id}" aria-label="${subject.name} planet: ${stat.masteredCount} of ${stat.totalSkills} islands mastered" style="--island-color:${subject.color};--island-bg:${subject.bg};--ring-pct:${pct}%">
+                  <span class="map-island-ring"></span>
+                  <span class="map-island-icon" aria-hidden="true">${subject.icon}</span>
+                </button>
+              `
+          }
         </div>
         <div class="map-island-label">
           <h3>${subject.name}</h3>
@@ -156,22 +237,29 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
 
   const homeStateName = activeTestId === "stateAssessments" ? getState(gameState.homeState)?.name : null;
 
-  // ACT's World Map is a dedicated ocean scene rather than the round
-  // planet-sphere every other test still uses — see .ocean-scene in
-  // style.css. A few faint, fixed-position ambient details (a distant
-  // ship sail, a couple of birds) sit near the top of the screen "on the
-  // horizon," not tied to the path's own length, so they read as
-  // background scenery rather than more path decorations.
-  const isOceanScene = activeTestId === "act";
-  // Fixed pixel offsets, not percentages — these need to sit in the open
-  // sky beside the heading near the top of the screen regardless of how
-  // tall the rest of the page ends up (which varies with subject count),
-  // not drift based on total scrollable height.
+  // Fixed-position ambient scenery (ships, birds, gulls, a sun glint) sits
+  // near the top of the screen "on the horizon," not tied to the path's
+  // own length, so it reads as background detail glimpsed once rather
+  // than more path decorations repeating down the page. Deliberately
+  // fuller than an earlier pass at this scene, which kept everything at
+  // 0.32 opacity and to just 3 elements on purpose, reasoning that a
+  // livelier ocean would read as "twee" — per direction, that read as
+  // flat and empty instead, so this version leans into an actually lived-
+  // in sea: more sails, more birds, real depth via layered opacity/size
+  // rather than one uniform faint tone. Fixed pixel offsets, not
+  // percentages — these need to sit in the open sky beside the heading
+  // regardless of how tall the rest of the page ends up (which varies
+  // with subject count), not drift based on total scrollable height.
   const ambientSceneHTML = isOceanScene
     ? `
-      <span class="ocean-ambient" style="left:78%;top:130px;font-size:34px;" aria-hidden="true">⛵</span>
-      <span class="ocean-ambient" style="left:60%;top:70px;font-size:15px;" aria-hidden="true">🕊️</span>
-      <span class="ocean-ambient" style="left:65%;top:95px;font-size:12px;" aria-hidden="true">🕊️</span>
+      <span class="ocean-ambient ocean-ambient-sun" style="left:14%;top:55px;font-size:46px;" aria-hidden="true">☀️</span>
+      <span class="ocean-ambient" style="left:78%;top:120px;font-size:40px;" aria-hidden="true">⛵</span>
+      <span class="ocean-ambient" style="left:20%;top:150px;font-size:26px;" aria-hidden="true">⛵</span>
+      <span class="ocean-ambient" style="left:60%;top:65px;font-size:18px;" aria-hidden="true">🕊️</span>
+      <span class="ocean-ambient" style="left:65%;top:92px;font-size:14px;" aria-hidden="true">🕊️</span>
+      <span class="ocean-ambient" style="left:52%;top:78px;font-size:13px;" aria-hidden="true">🕊️</span>
+      <span class="ocean-ambient" style="left:90%;top:180px;font-size:22px;" aria-hidden="true">🐬</span>
+      <span class="ocean-ambient" style="left:8%;top:210px;font-size:20px;" aria-hidden="true">🐟</span>
     `
     : "";
 
