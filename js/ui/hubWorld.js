@@ -197,50 +197,13 @@ export function renderWorldSvg(layout, { ariaLabel, centerClearing, skipDecorati
 // continuously-variable direction+magnitude instead of a held key, so
 // every caller gets touch support for free by passing this one extra
 // element rather than reimplementing movement.
-export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, targets, isWalkable = isInsideWorld, joystickEl }) {
-  let x = spawn.x;
-  let y = spawn.y;
+// Shared "which of these keys are currently held" tracker — WASD + arrow
+// keys, ignoring keystrokes typed into a real input/textarea. Used by
+// wireMovement's own tick() below, and by any other screen with a
+// smaller, non-hub movement loop of its own (see worldMap.js's boat
+// drift) that still wants this exact same key set/typing-guard.
+export function wireHeldKeys() {
   const held = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false };
-  const stick = { x: 0, y: 0 };
-  let stopped = false;
-  let rafId = null;
-  let lastTarget = null;
-  let viewportW = 0;
-  let viewportH = 0;
-  let idleTimer = null;
-  let wasMoving = false;
-
-  function scheduleHint() {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => hintEl.classList.add("is-visible"), IDLE_HINT_MS);
-  }
-  function hideHint() {
-    clearTimeout(idleTimer);
-    hintEl.classList.remove("is-visible");
-  }
-  scheduleHint();
-
-  function measureViewport() {
-    const rect = viewportEl.getBoundingClientRect();
-    viewportW = rect.width;
-    viewportH = rect.height;
-  }
-  measureViewport();
-  window.addEventListener("resize", measureViewport);
-  // Toggling fullscreen changes the viewport's size immediately, before
-  // any "resize" event necessarily fires — re-measure right away so the
-  // camera doesn't keep clamping to the old (much smaller) dimensions.
-  document.addEventListener("fullscreenchange", measureViewport);
-
-  function place() {
-    avatarEl.style.left = `${x}px`;
-    avatarEl.style.top = `${y}px`;
-    const camX = clamp(viewportW / 2 - x, Math.min(0, viewportW - WORLD_W), 0);
-    const camY = clamp(viewportH / 2 - y, Math.min(0, viewportH - WORLD_H), 0);
-    worldEl.style.transform = `translate(${camX}px, ${camY}px)`;
-  }
-  place();
-
   function keyName(e) {
     return e.key.toLowerCase();
   }
@@ -256,12 +219,27 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
   }
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
+  return {
+    held,
+    stop() {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp);
+    },
+  };
+}
 
-  // Touch (and mouse-drag) support: dragging from the joystick base sets
-  // `stick` to a unit-ish vector toward the pointer, same idea as an
-  // on-screen thumbstick in any mobile game. `pointerdown` + setPointerCapture
-  // means the drag keeps tracking even once the finger/cursor leaves the
-  // small joystick element, without needing a document-level listener.
+// Shared on-screen-thumbstick pointer tracking (see joystickHTML below for
+// its markup) — dragging from the joystick base writes a -1..1-ish unit
+// vector into the `stick` object passed in and paints the knob via the
+// same --knob-x/--knob-y vars its own CSS reads. Used by wireMovement's
+// own tick() below, and by any other screen with a smaller, non-hub
+// movement loop of its own (see worldMap.js's boat drift) that still
+// wants this exact same touch control. `joystickEl` is optional — a
+// missing one just means "no on-screen control," same as before this was
+// split out, so a caller with no thumbstick at all doesn't need its own
+// guard.
+export function wireJoystickStick(joystickEl, stick) {
+  if (!joystickEl) return () => {};
   const JOYSTICK_RADIUS = 46;
   let activePointerId = null;
   function setStickFromEvent(e) {
@@ -305,12 +283,63 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
     joystickEl.classList.remove("is-active");
     resetStick();
   }
-  if (joystickEl) {
-    joystickEl.addEventListener("pointerdown", onPointerDown);
-    joystickEl.addEventListener("pointermove", onPointerMove);
-    joystickEl.addEventListener("pointerup", onPointerUp);
-    joystickEl.addEventListener("pointercancel", onPointerUp);
+  joystickEl.addEventListener("pointerdown", onPointerDown);
+  joystickEl.addEventListener("pointermove", onPointerMove);
+  joystickEl.addEventListener("pointerup", onPointerUp);
+  joystickEl.addEventListener("pointercancel", onPointerUp);
+  return function unwire() {
+    joystickEl.removeEventListener("pointerdown", onPointerDown);
+    joystickEl.removeEventListener("pointermove", onPointerMove);
+    joystickEl.removeEventListener("pointerup", onPointerUp);
+    joystickEl.removeEventListener("pointercancel", onPointerUp);
+  };
+}
+
+export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, targets, isWalkable = isInsideWorld, joystickEl }) {
+  let x = spawn.x;
+  let y = spawn.y;
+  const { held, stop: stopKeys } = wireHeldKeys();
+  const stick = { x: 0, y: 0 };
+  let stopped = false;
+  let rafId = null;
+  let lastTarget = null;
+  let viewportW = 0;
+  let viewportH = 0;
+  let idleTimer = null;
+  let wasMoving = false;
+
+  function scheduleHint() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => hintEl.classList.add("is-visible"), IDLE_HINT_MS);
   }
+  function hideHint() {
+    clearTimeout(idleTimer);
+    hintEl.classList.remove("is-visible");
+  }
+  scheduleHint();
+
+  function measureViewport() {
+    const rect = viewportEl.getBoundingClientRect();
+    viewportW = rect.width;
+    viewportH = rect.height;
+  }
+  measureViewport();
+  window.addEventListener("resize", measureViewport);
+  // Toggling fullscreen changes the viewport's size immediately, before
+  // any "resize" event necessarily fires — re-measure right away so the
+  // camera doesn't keep clamping to the old (much smaller) dimensions.
+  document.addEventListener("fullscreenchange", measureViewport);
+
+  function place() {
+    avatarEl.style.left = `${x}px`;
+    avatarEl.style.top = `${y}px`;
+    const camX = clamp(viewportW / 2 - x, Math.min(0, viewportW - WORLD_W), 0);
+    const camY = clamp(viewportH / 2 - y, Math.min(0, viewportH - WORLD_H), 0);
+    worldEl.style.transform = `translate(${camX}px, ${camY}px)`;
+  }
+  place();
+
+  const unwireJoystick = wireJoystickStick(joystickEl, stick);
 
   function checkArrivals() {
     for (const t of targets) {
@@ -377,16 +406,10 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
     stopped = true;
     if (rafId) cancelAnimationFrame(rafId);
     clearTimeout(idleTimer);
-    document.removeEventListener("keydown", onKeyDown);
-    document.removeEventListener("keyup", onKeyUp);
+    stopKeys();
     window.removeEventListener("resize", measureViewport);
     document.removeEventListener("fullscreenchange", measureViewport);
-    if (joystickEl) {
-      joystickEl.removeEventListener("pointerdown", onPointerDown);
-      joystickEl.removeEventListener("pointermove", onPointerMove);
-      joystickEl.removeEventListener("pointerup", onPointerUp);
-      joystickEl.removeEventListener("pointercancel", onPointerUp);
-    }
+    unwireJoystick();
   };
 }
 

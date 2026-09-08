@@ -4,6 +4,7 @@ import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
 import { monsterSVG } from "./monster.js";
 import { pathPositions, pathHeight, renderPathSvg, renderDecorations, glowVars } from "./pathTrail.js";
+import { wireHeldKeys, wireJoystickStick, joystickHTML } from "./hubWorld.js";
 
 const ROW_HEIGHT = 200;
 
@@ -150,6 +151,98 @@ function renderSubjectIslandArt(subjectId, color) {
   return art ? art(color) : "";
 }
 
+// A simple rowboat hull the current-subject mascot rides in on the ocean
+// scene, moored just off the right edge of its own island — replacing the
+// plain floating-monster .map-mascot every other test's map still uses
+// (see the isOceanScene branch in the planets map below). Its own bob
+// animation stays on the monster wrapper (.map-mascot-boat), not this
+// outer anchor, since the anchor's transform is owned by wireBoatDrift
+// below (an animation and a per-frame inline transform on the same
+// element would fight every frame — the animation always wins the
+// computed value, silently freezing whichever one loses).
+function renderBoatHull() {
+  return `
+    <svg class="map-boat-hull" viewBox="0 0 100 46" width="100" height="46" aria-hidden="true">
+      <ellipse cx="50" cy="43" rx="46" ry="5" fill="rgba(20,40,60,0.18)" />
+      <path d="M6,20 Q50,42 94,20 L86,8 Q50,16 14,8 Z" fill="#a9713f" stroke="#7a4f28" stroke-width="2" stroke-linejoin="round" />
+      <path d="M14,8 Q50,16 86,8" fill="none" stroke="#c98f56" stroke-width="2" />
+    </svg>
+  `;
+}
+
+function renderBoatMascot() {
+  return `
+    <div class="map-boat-anchor" data-boat>
+      <div class="map-mascot map-mascot-boat">
+        <div class="map-boat">
+          ${renderBoatHull()}
+          <div class="map-boat-rider">${monsterSVG(gameState.getDisplayAvatar(), { size: 64 })}</div>
+        </div>
+      </div>
+    </div>
+    <div class="map-boat-joystick-wrap">${joystickHTML("map-boat-joystick")}</div>
+  `;
+}
+
+// A small, purely local drift for the current-subject's boat (see
+// renderBoatMascot above) — WASD/joystick nudges the boat around a short
+// patch of open water right where it's moored, same input handling as
+// every hub's own wireMovement (hubWorld.js, via the shared
+// wireHeldKeys/wireJoystickStick helpers it now exports) but with no
+// camera and no world bounds: this map's own layout/scrolling/click-to-
+// enter-an-island stays exactly as it was. A full walkable-ocean rebuild
+// of this whole screen (steering here as this map's actual navigation
+// model) was considered and explicitly scoped out in favor of this
+// smaller, decorative-only version.
+function wireBoatDrift(anchorEl, joystickEl) {
+  const RANGE_X = 70;
+  const RANGE_Y = 34;
+  const SPEED = 2.6;
+  let ox = 0;
+  let oy = 0;
+  const { held, stop: stopKeys } = wireHeldKeys();
+  const stick = { x: 0, y: 0 };
+  const unwireJoystick = wireJoystickStick(joystickEl, stick);
+  let stopped = false;
+  let rafId = null;
+
+  function place() {
+    anchorEl.style.transform = `translate(${ox}px, ${oy}px)`;
+  }
+
+  function tick() {
+    if (stopped) return;
+    let dx = 0;
+    let dy = 0;
+    let speedScale = 1;
+    if (held.w || held.arrowup) dy -= 1;
+    if (held.s || held.arrowdown) dy += 1;
+    if (held.a || held.arrowleft) dx -= 1;
+    if (held.d || held.arrowright) dx += 1;
+    if (!dx && !dy && (stick.x || stick.y)) {
+      dx = stick.x;
+      dy = stick.y;
+      speedScale = Math.min(Math.hypot(dx, dy), 1);
+    }
+    if (dx || dy) {
+      const len = Math.hypot(dx, dy) || 1;
+      ox = Math.max(-RANGE_X, Math.min(RANGE_X, ox + (dx / len) * SPEED * speedScale));
+      oy = Math.max(-RANGE_Y, Math.min(RANGE_Y, oy + (dy / len) * SPEED * speedScale));
+      place();
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+
+  return function stop() {
+    if (stopped) return;
+    stopped = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    stopKeys();
+    unwireJoystick();
+  };
+}
+
 export function renderWorldMap(root, navigate, { testId } = {}) {
   // Arriving here *with* a testId (from the Solar System screen picking a
   // planet) switches the player's current planet; arriving without one
@@ -195,7 +288,7 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
     const isCurrent = i === currentIndex;
     return `
       <div class="map-node-wrap" style="left:${x}%;top:${y}px;">
-        ${isCurrent ? `<div class="map-mascot">${monsterSVG(gameState.getDisplayAvatar(), { size: 86 })}</div>` : ""}
+        ${isCurrent ? (isOceanScene ? renderBoatMascot() : `<div class="map-mascot">${monsterSVG(gameState.getDisplayAvatar(), { size: 86 })}</div>`) : ""}
         <div class="node-anchor">
           ${
             isOceanScene
@@ -306,13 +399,45 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
     </main>
   `;
 
-  wireHud(root, navigate);
-  root.querySelector("[data-solar-system]").addEventListener("click", () => navigate("solarSystem"));
-  root.querySelector("[data-change-state]")?.addEventListener("click", () => navigate("statePicker", { returnTo: "map" }));
+  // The boat's own WASD/joystick listeners (see wireBoatDrift above) bind
+  // to `document`, so they need tearing down before this screen navigates
+  // away — same "wrap every in-screen nav in a local goTo" convention the
+  // walkable hub screens use for their own wireMovement (see islandHub.js
+  // etc.), not a document-wide route-change hook this app doesn't have.
+  // wireHud gets this wrapper too (not the raw `navigate`) since its own
+  // Home/back buttons are how a player actually leaves this screen most
+  // of the time — missing that would leave the boat's rAF loop running
+  // forever against a detached node, and its WASD listener still bound
+  // on whatever screen came next.
+  let stopBoat = () => {};
+  const goTo = (screen, params) => {
+    stopBoat();
+    navigate(screen, params);
+  };
+  wireHud(root, goTo);
+  if (isOceanScene) {
+    const boatAnchor = root.querySelector("[data-boat]");
+    const boatJoystick = root.querySelector("#map-boat-joystick");
+    if (boatAnchor) {
+      stopBoat = wireBoatDrift(boatAnchor, boatJoystick);
+      // navigate() just scrolled to (0,0) before calling this render — on
+      // a typical viewport that leaves the boat well below the fold
+      // behind both shortcut rows (they alone run ~400px tall), so a
+      // player arriving here would have to already know to scroll down
+      // before WASD/the joystick does anything visible. Landing on the
+      // boat's own current-subject node instead makes the steerable
+      // control the first thing in view, the same way it's the first
+      // thing this screen is actually about.
+      boatAnchor.closest(".map-node-wrap")?.scrollIntoView({ block: "center" });
+    }
+  }
+
+  root.querySelector("[data-solar-system]").addEventListener("click", () => goTo("solarSystem"));
+  root.querySelector("[data-change-state]")?.addEventListener("click", () => goTo("statePicker", { returnTo: "map" }));
   root.querySelectorAll("[data-subject]").forEach((node) => {
-    node.addEventListener("click", () => navigate("island", { subjectId: node.dataset.subject }));
+    node.addEventListener("click", () => goTo("island", { subjectId: node.dataset.subject }));
   });
   root.querySelectorAll("[data-shortcut]").forEach((node) => {
-    node.addEventListener("click", () => navigate(node.dataset.shortcut, { testId: activeTestId }));
+    node.addEventListener("click", () => goTo(node.dataset.shortcut, { testId: activeTestId }));
   });
 }

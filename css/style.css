@@ -889,6 +889,81 @@ input[type="password"] {
   50% { transform: translateY(-6px); }
 }
 
+/* The current-subject's boat mascot (ocean scene only — see
+   renderBoatMascot in worldMap.js) replaces the plain floating monster
+   above: .map-mascot's own positioning was tuned for hovering above a
+   plain 88px circle, not resting beside a much larger (260x224) island-
+   art button, so this variant repositions rather than reusing top:-58px
+   as-is. The bob animation and light/dark contact-shadow filter both
+   stay on .map-mascot itself — same low-contrast-avatar-against-water
+   problem its own comment describes applies just as much to a monster in
+   a boat. The outer .map-boat-anchor (not this element) is what
+   wireBoatDrift's own per-frame transform moves — an animation and a
+   per-frame inline transform on the very same element would fight every
+   frame, with the animation always winning the computed value and
+   silently freezing the drift. */
+.map-mascot-boat {
+  position: static;
+  top: auto;
+}
+
+.map-boat-anchor {
+  position: absolute;
+  left: 178px;
+  top: 78px;
+  z-index: 2;
+}
+
+.map-boat {
+  position: relative;
+  width: 100px;
+  height: 64px;
+}
+
+.map-boat-hull {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.map-boat-rider {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 1;
+  line-height: 0;
+}
+
+/* wireBoatDrift's own local WASD/joystick nudge (worldMap.js) — a small
+   patch of open water right beside the boat's own moored spot, not this
+   whole screen's navigation (which stays click-to-enter-an-island,
+   unchanged either way). Reuses hubWorld.js's own .hub-joystick markup/
+   look, sized down from its usual 92px since this is a secondary,
+   decorative control living right next to one mascot, not a screen's
+   primary movement control. */
+.map-boat-joystick-wrap {
+  position: absolute;
+  left: 178px;
+  top: 160px;
+  z-index: 2;
+}
+
+.map-boat-joystick-wrap .hub-joystick {
+  position: static;
+  left: auto;
+  bottom: auto;
+  width: 60px;
+  height: 60px;
+}
+
+.map-boat-joystick-wrap .hub-joystick-knob {
+  width: 26px;
+  height: 26px;
+}
+
 /* The boss bridge's own torch accents (islandHub.js's own
    renderBossBridgeTorches) — a gentle opacity flicker so they read as
    flame rather than a flat dot. The glow ring beneath each flame pulses
