@@ -889,16 +889,21 @@ input[type="password"] {
   50% { transform: translateY(-6px); }
 }
 
-/* The World Map's own boat avatar (ocean scene only — see
-   renderBoatAvatar in worldMap.js) sails the whole ocean canvas via
-   wireMovement, same as every other hub's own .hub-avatar — so it reuses
-   that class's own position/centering/contact-shadow rule as-is, just
-   re-centered here since a wide, short boat (.map-boat below) doesn't
-   suit .hub-avatar's own translate(-50%,-60%) (tuned for an upright
-   standing monster's own feet). No bob animation, matching every other
-   hub's own avatar. */
-.map-boat-avatar {
+/* The World Map's own boat (ocean scene only — see renderBoatRoamer/
+   wireBoatRoam in worldMap.js) roams freely inside .map-path-container
+   itself, not a fixed-canvas hub world — this screen's own layout/
+   scrolling stayed the original one every other test still uses (a full
+   walkable-hub-engine version of this screen was tried and explicitly
+   reverted). Positioned/centered/halo-shadowed the same way every hub's
+   own .hub-avatar is, just defined locally here since this element isn't
+   inside a .hub-viewport. No bob animation, since it's actively steerable
+   rather than idle. */
+.map-boat-roamer {
+  position: absolute;
+  z-index: 3;
   transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.85)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.3));
 }
 
 .map-boat {
@@ -924,15 +929,23 @@ input[type="password"] {
   line-height: 0;
 }
 
-/* The World Map's own walkable canvas (ocean scene only) sits in normal
-   page flow below the heading/shortcuts rather than filling the whole
-   viewport the way .hub-island-screen's flex-column layout does for the
-   4 subject hubs — this screen keeps its usual scrolling page above the
-   canvas, so .hub-viewport needs an explicit height here instead of the
-   flex:1 1 auto/min-height it gets there. */
-.ocean-map-viewport {
-  height: 560px;
-  margin: 20px auto 0;
+/* The boat's own on-screen joystick (ocean scene only) — fixed to the
+   browser window's own corner (not this page's own scroll position, and
+   not the boat's own current spot) so it's always reachable no matter how
+   far the player has scrolled down this map's own tall, normal-flow
+   page — a real WASD keyboard has no such problem, but a touch/mouse-drag
+   player needs the control to actually stay put. Reuses hubWorld.js's own
+   .hub-joystick markup/knob styling, just overriding its usual
+   .hub-viewport-relative position: absolute with position: fixed here. */
+.map-boat-joystick-fixed {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 50;
+}
+
+.map-boat-joystick-fixed .hub-joystick {
+  position: static;
 }
 
 /* The boss bridge's own torch accents (islandHub.js's own

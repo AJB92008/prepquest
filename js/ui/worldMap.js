@@ -4,7 +4,7 @@ import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
 import { monsterSVG } from "./monster.js";
 import { pathPositions, pathHeight, renderPathSvg, renderDecorations, glowVars } from "./pathTrail.js";
-import { WORLD_W, WORLD_H, CENTER, wireMovement, wireFullscreenToggle, joystickHTML } from "./hubWorld.js";
+import { wireHeldKeys, wireJoystickStick, joystickHTML } from "./hubWorld.js";
 
 const ROW_HEIGHT = 200;
 
@@ -151,22 +151,6 @@ function renderSubjectIslandArt(subjectId, color) {
   return art ? art(color) : "";
 }
 
-// Hand-placed world coordinates for the 4 ACT islands inside the shared
-// hubWorld.js canvas (WORLD_W x WORLD_H — the same fixed-pixel space
-// Wordwood Isle/Numeria Peaks/Athenaeum Reef/Lab Archipelago each walk
-// their own player through). A loose rectangle spread well inside
-// WALK_MARGIN on every side, so the boat can sail right up to any of
-// them with room to spare — not derived from hubWorld.js's own
-// lobe/curve layout helpers (those lay out many zones along one shape;
-// this is 4 unrelated, separate destinations, closer to Numeria Peaks'
-// or Lab Archipelago's own hand-placed islands than to a formula).
-const ISLAND_WORLD_POS = {
-  english: { x: 500, y: 420 },
-  math: { x: 1700, y: 420 },
-  reading: { x: 1700, y: 1180 },
-  science: { x: 500, y: 1180 },
-};
-
 // A simple rowboat hull for the player's own avatar on the ocean scene —
 // replacing the plain floating-monster .map-mascot every other test's
 // map still uses (see the isOceanScene branch in the planets map below).
@@ -180,24 +164,99 @@ function renderBoatHull() {
   `;
 }
 
-// The boat avatar's own markup — a .hub-avatar (same class every hub's
-// own avatar uses: wireMovement's place() writes left/top on this exact
-// element every frame, and .hub-avatar's base CSS already centers on
-// that point and adds the light/dark contact-shadow halo every hub
-// avatar needs against its own water/background) holding the hull +
-// rider layering. No bob animation here, matching every other hub's own
-// avatar (none of them idle-bob) — .hub-avatar's own centering transform
-// and wireMovement's per-frame left/top are the only things that may
-// ever touch this element's position.
-function renderBoatAvatar() {
+// The boat's own markup — sits directly inside .map-path-container (see
+// the isOceanScene branch further down), free to roam that container's
+// entire scrollable area rather than a fixed-canvas "hub world": this
+// map's own layout/scrolling/click-to-enter-an-island is the original,
+// unchanged one every other test still uses (see this feature's own chat
+// history — a full walkable-hub-engine rebuild was tried and explicitly
+// reverted in favor of keeping this screen's original look). No bob
+// animation, since it's actively steerable rather than idle.
+function renderBoatRoamer() {
   return `
-    <div class="hub-avatar map-boat-avatar" id="mapBoatAvatar" aria-hidden="true">
+    <div class="map-boat-roamer" id="mapBoatRoamer" aria-hidden="true">
       <div class="map-boat">
         ${renderBoatHull()}
         <div class="map-boat-rider">${monsterSVG(gameState.getDisplayAvatar(), { size: 64 })}</div>
       </div>
     </div>
   `;
+}
+
+// WASD/joystick lets the boat roam anywhere within .map-path-container's
+// own scrollable area (bounded by its actual measured width and its full
+// height, spanning every island) — no camera-follow: the page just
+// scrolls the normal way, same as this map always has, and the player
+// scrolls manually to keep the boat in view while sailing. Reuses
+// hubWorld.js's own key/joystick input helpers (the exact same ones
+// wireMovement itself uses) so this feels identical to every subject
+// hub's own movement, just without the fixed-canvas/camera machinery
+// that comes with wireMovement itself.
+function wireBoatRoam(boatEl, containerEl, joystickEl, spawn) {
+  const SPEED = 372; // px/sec — matches hubWorld.js's own AVATAR_SPEED so this boat feels the same speed as every subject hub's own avatar
+  const MARGIN = 30;
+  let x = spawn.x;
+  let y = spawn.y;
+  const { held, stop: stopKeys } = wireHeldKeys();
+  const stick = { x: 0, y: 0 };
+  const unwireJoystick = wireJoystickStick(joystickEl, stick);
+  let stopped = false;
+  let rafId = null;
+  let lastTimestamp = null;
+  let boundsW = 0;
+  let boundsH = 0;
+
+  function measureBounds() {
+    boundsW = containerEl.clientWidth;
+    boundsH = containerEl.clientHeight;
+  }
+  measureBounds();
+  window.addEventListener("resize", measureBounds);
+
+  function place() {
+    boatEl.style.left = `${x}px`;
+    boatEl.style.top = `${y}px`;
+  }
+  place();
+
+  function tick(timestamp) {
+    if (stopped) return;
+    // First tick has no prior timestamp to diff against — assume one
+    // nominal 60fps frame rather than moving 0px.
+    const elapsedMs = lastTimestamp === null ? 16.67 : Math.min(timestamp - lastTimestamp, 100);
+    lastTimestamp = timestamp;
+    const dtSeconds = elapsedMs / 1000;
+    let dx = 0;
+    let dy = 0;
+    let speedScale = 1;
+    if (held.w || held.arrowup) dy -= 1;
+    if (held.s || held.arrowdown) dy += 1;
+    if (held.a || held.arrowleft) dx -= 1;
+    if (held.d || held.arrowright) dx += 1;
+    if (!dx && !dy && (stick.x || stick.y)) {
+      dx = stick.x;
+      dy = stick.y;
+      speedScale = Math.min(Math.hypot(dx, dy), 1);
+    }
+    if (dx || dy) {
+      const len = Math.hypot(dx, dy) || 1;
+      const dist = SPEED * speedScale * dtSeconds;
+      x = Math.max(MARGIN, Math.min(boundsW - MARGIN, x + (dx / len) * dist));
+      y = Math.max(MARGIN, Math.min(boundsH - MARGIN, y + (dy / len) * dist));
+      place();
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+
+  return function stop() {
+    if (stopped) return;
+    stopped = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    window.removeEventListener("resize", measureBounds);
+    stopKeys();
+    unwireJoystick();
+  };
 }
 
 export function renderWorldMap(root, navigate, { testId } = {}) {
@@ -228,13 +287,7 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
   // own art accordingly, not just the page chrome further down.
   const isOceanScene = activeTestId === "act";
 
-  // The ocean scene lays its islands out in the shared hubWorld.js fixed-
-  // pixel canvas (ISLAND_WORLD_POS, real world px) instead of this map's
-  // own percentage/scroll-based path (pathPositions) every other test
-  // still uses — the two are different coordinate systems, so `positions`
-  // means "percent + px" for one and "world px" for the other, matching
-  // whichever the `planets` markup below actually consumes.
-  const positions = isOceanScene ? subjects.map((s) => ISLAND_WORLD_POS[s.id] || CENTER) : pathPositions(subjects.length, { rowHeight: ROW_HEIGHT, leftPct: 26, rightPct: 74 });
+  const positions = pathPositions(subjects.length, { rowHeight: ROW_HEIGHT, leftPct: 26, rightPct: 74 });
   const totalHeight = pathHeight(subjects.length, ROW_HEIGHT);
 
   const stats = subjects.map((subject) => gameState.getSubjectStats(subject.id));
@@ -249,12 +302,14 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
     const stat = stats[i];
     const pct = stat.totalSkills > 0 ? Math.round((stat.masteredCount / stat.totalSkills) * 100) : 0;
     const isCurrent = i === currentIndex;
-    // The ocean scene's own avatar is a single boat sailing the whole
-    // canvas (see renderBoatAvatar/wireMovement below), not a mascot
-    // pinned to one island's own node — every other test keeps the
-    // original "mascot floats above whichever planet is current" mascot.
+    // The ocean scene's own boat (see renderBoatRoamer/wireBoatRoam below)
+    // roams the whole map on its own, independent of any one island's own
+    // node — so it replaces the plain mascot here rather than sitting
+    // inside a node-wrap the way it briefly did in an earlier version.
+    // Every other test keeps the original "mascot floats above whichever
+    // planet is current" mascot exactly as it always has.
     return `
-      <div class="map-node-wrap" style="left:${isOceanScene ? `${x}px` : `${x}%`};top:${y}px;">
+      <div class="map-node-wrap" style="left:${x}%;top:${y}px;">
         ${isCurrent && !isOceanScene ? `<div class="map-mascot">${monsterSVG(gameState.getDisplayAvatar(), { size: 86 })}</div>` : ""}
         <div class="node-anchor">
           ${
@@ -322,29 +377,6 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
     `
     : "";
 
-  // The ocean scene's own walkable canvas — same hubWorld.js engine every
-  // subject hub uses (fixed WORLD_W x WORLD_H world, camera-follow,
-  // WASD/joystick via wireMovement below), replacing this map's own
-  // scrolling path/decorations for ACT only. Reaching an island is still
-  // a deliberate click on its own button (targets: [] below — see this
-  // feature's own chat history for why sailing onto one doesn't enter it
-  // automatically), so this is "a real place to sail," not a new way to
-  // navigate. Every non-ACT test keeps the original scrolling path
-  // entirely untouched, several lines down in this same template.
-  const oceanCanvasHTML = isOceanScene
-    ? `
-      <p class="map-subtitle hub-hint" id="mapHubHint">⛵ Sail with WASD or the joystick &mdash; click an island to open it</p>
-      <div class="hub-viewport ocean-map-viewport" id="mapHubViewport">
-        <button class="hub-fullscreen-btn" id="mapHubFullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
-        ${joystickHTML("mapHubJoystick")}
-        <div class="hub-world" id="mapHubWorld" style="width:${WORLD_W}px;height:${WORLD_H}px;">
-          ${planets}
-          ${renderBoatAvatar()}
-        </div>
-      </div>
-    `
-    : "";
-
   root.innerHTML = `
     ${hudHTML("map")}
     <main class="screen map-screen ${isOceanScene ? "ocean-scene" : ""}" style="--test-color:${test.color};--test-bg:${test.bg};${glowVars(test.color)}">
@@ -380,18 +412,14 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
           `
           : ""
       }
-      ${
-        isOceanScene
-          ? oceanCanvasHTML
-          : `
-            <div class="map-path-container" style="height:${totalHeight}px">
-              <div class="map-planet-circle"></div>
-              ${renderPathSvg(positions, totalHeight, { color: test.color })}
-              <div class="path-decorations">${renderDecorations(totalHeight, 1, TEST_DECORATIONS[activeTestId] || TEST_DECORATIONS.act)}</div>
-              ${planets}
-            </div>
-          `
-      }
+      <div class="map-path-container" style="height:${totalHeight}px">
+        ${isOceanScene ? "" : `<div class="map-planet-circle"></div>`}
+        ${renderPathSvg(positions, totalHeight, { color: test.color })}
+        <div class="path-decorations">${renderDecorations(totalHeight, 1, TEST_DECORATIONS[activeTestId] || TEST_DECORATIONS.act)}</div>
+        ${planets}
+        ${isOceanScene ? renderBoatRoamer() : ""}
+      </div>
+      ${isOceanScene ? `<div class="map-boat-joystick-fixed">${joystickHTML("mapBoatJoystick")}</div>` : ""}
     </main>
   `;
 
@@ -412,40 +440,33 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
   };
   wireHud(root, goTo);
   if (isOceanScene) {
-    const viewportEl = root.querySelector("#mapHubViewport");
-    const worldEl = root.querySelector("#mapHubWorld");
-    const avatarEl = root.querySelector("#mapBoatAvatar");
-    const hintEl = root.querySelector("#mapHubHint");
-    const joystickEl = root.querySelector("#mapHubJoystick");
-    // Spawns just off the current subject's own island, same "follows
-    // the current subject" idea this feature started from — offset to
-    // the side rather than dead-center on it so the boat doesn't render
-    // on top of the island's own clickable button.
-    const currentPos = positions[currentIndex] || CENTER;
-    const spawn = { x: currentPos.x + 170, y: currentPos.y };
-    const stopMovement = wireMovement({
-      avatarEl,
-      worldEl,
-      viewportEl,
-      hintEl,
-      joystickEl,
-      spawn,
-      // Reaching another island is still a deliberate click on its own
-      // button, not something sailing near it triggers — no arrival
-      // targets here at all (see this feature's own chat history).
-      targets: [],
-    });
-    const unwireFullscreen = wireFullscreenToggle(viewportEl, root.querySelector("#mapHubFullscreenBtn"));
-    stopBoat = () => {
-      stopMovement();
-      unwireFullscreen();
+    const containerEl = root.querySelector(".map-path-container");
+    const boatEl = root.querySelector("#mapBoatRoamer");
+    const joystickEl = root.querySelector("#mapBoatJoystick");
+    // Spawns just off the current subject's own island (percentage x
+    // converted to this render's actual measured container width, since
+    // the container itself is percentage/responsive-sized) — same
+    // "follows the current subject" idea this feature started from.
+    // Offset toward the container's own middle rather than dead-center on
+    // the island so the boat doesn't render on top of its clickable
+    // button, and stays clear of either edge regardless of which side
+    // (left/right-alternating, see pathPositions) the current island
+    // itself sits on.
+    const currentPos = positions[currentIndex];
+    const containerWidth = containerEl.clientWidth;
+    const currentPx = (currentPos.x / 100) * containerWidth;
+    const side = currentPos.x < 50 ? 1 : -1;
+    const spawn = {
+      x: Math.max(40, Math.min(containerWidth - 40, currentPx + side * 70)),
+      y: currentPos.y,
     };
+    stopBoat = wireBoatRoam(boatEl, containerEl, joystickEl, spawn);
     // navigate() just scrolled to (0,0) before calling this render — on a
-    // typical viewport that leaves the canvas well below the fold behind
-    // both shortcut rows (they alone run several hundred px tall), so a
-    // player arriving here would have to already know to scroll down
-    // before WASD/the joystick does anything visible.
-    viewportEl.scrollIntoView({ block: "center" });
+    // typical viewport that leaves the boat's own spawn spot below the
+    // fold behind both shortcut rows, so a player arriving here would
+    // have to already know to scroll down before WASD/the joystick does
+    // anything visible.
+    boatEl.scrollIntoView({ block: "center" });
   }
 
   root.querySelector("[data-solar-system]").addEventListener("click", () => goTo("solarSystem"));

@@ -1,12 +1,10 @@
-// Regression tests for ACT's World Map ocean-scene rebuild — a real
-// walkable hubWorld.js canvas (WORLD_W x WORLD_H, camera-follow via
-// wireMovement, a boat avatar) replacing the plain scrolling path/
-// mascot every other test's World Map still uses. See ISLAND_WORLD_POS
-// in ui/worldMap.js: each ACT subject gets its own hand-placed world
-// coordinate — a subject id missing from that map would silently fall
-// back to sharing hubWorld.js's own CENTER with whichever other subject
-// (if any) also missed it, stacking two islands on top of each other
-// with no visual cue that anything's wrong.
+// Regression tests for ACT's World Map boat — WASD/joystick lets the
+// player's boat roam freely around .map-path-container (see
+// renderBoatRoamer/wireBoatRoam in ui/worldMap.js), but this screen's own
+// layout/scrolling/click-to-enter-an-island is the same original one
+// every other test's World Map still uses (a full walkable-hub-engine
+// rebuild of this screen was tried and explicitly reverted — see this
+// feature's own chat history).
 import { GameState, gameState } from "../js/state.js";
 import { renderWorldMap } from "../js/ui/worldMap.js";
 import { test, assertEqual, assertTrue } from "./assert.js";
@@ -19,33 +17,23 @@ function freshGameState() {
   return gameState;
 }
 
-test("every ACT subject island sits at its own distinct world position (none silently fell back to sharing CENTER)", () => {
+test("ACT's World Map keeps the original scrolling path container and adds a boat + fixed joystick to it", () => {
   freshGameState();
   const root = document.createElement("div");
   renderWorldMap(root, () => {}, { testId: "act" });
-  const wraps = [...root.querySelectorAll(".map-node-wrap")];
-  assertTrue(wraps.length >= 4, `expected at least 4 ACT islands, got ${wraps.length}`);
-  const positions = wraps.map((w) => w.style.left + "," + w.style.top);
-  const unique = new Set(positions);
-  assertEqual(unique.size, positions.length, `two or more ACT islands share the exact same world position: [${positions.join(" | ")}]`);
+  assertTrue(!!root.querySelector(".map-path-container"), "ACT should still render the original path container");
+  assertTrue(!!root.querySelector("#mapBoatRoamer"), "expected the boat");
+  assertTrue(!!root.querySelector("#mapBoatJoystick"), "expected the boat's own joystick");
+  assertTrue(root.querySelector("#mapBoatRoamer").closest(".map-path-container") !== null, "the boat should sit inside .map-path-container, not a separate canvas");
 });
 
-test("ACT's World Map renders a walkable ocean canvas with a boat avatar, not the plain scrolling path", () => {
-  freshGameState();
-  const root = document.createElement("div");
-  renderWorldMap(root, () => {}, { testId: "act" });
-  assertTrue(!!root.querySelector("#mapHubViewport"), "expected the ocean scene's own #mapHubViewport");
-  assertTrue(!!root.querySelector("#mapBoatAvatar"), "expected the boat avatar");
-  assertTrue(!root.querySelector(".map-path-container"), "ACT should no longer render the old scrolling path container");
-});
-
-test("SAT's World Map still renders the original scrolling path and plain mascot, untouched by the ocean-scene rebuild", () => {
+test("SAT's World Map has no boat or boat joystick, untouched by ACT's own boat feature", () => {
   freshGameState();
   const root = document.createElement("div");
   renderWorldMap(root, () => {}, { testId: "sat" });
   assertTrue(!!root.querySelector(".map-path-container"), "SAT should still render the original path container");
-  assertTrue(!root.querySelector("#mapHubViewport"), "SAT should not render the ocean scene's walkable canvas");
-  assertTrue(!root.querySelector("#mapBoatAvatar"), "SAT should not render a boat avatar");
+  assertTrue(!root.querySelector("#mapBoatRoamer"), "SAT should not render a boat");
+  assertTrue(!root.querySelector("#mapBoatJoystick"), "SAT should not render the boat's joystick");
 });
 
 test("clicking an ACT island still navigates there directly, even though the boat can now sail up to it", () => {
