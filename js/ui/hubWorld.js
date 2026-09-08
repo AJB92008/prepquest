@@ -6,15 +6,17 @@
 // "world" bigger than the viewport, with one always-different,
 // dark-pathed "boss" spot at the bottom-middle, a following camera,
 // continuous WASD-or-joystick movement, an idle hint, and a fullscreen
-// toggle. Three zone-layout strategies live here — computeCurveLayout
+// toggle. Four zone-layout strategies live here — computeCurveLayout
 // (any parametric spine — an S-curve, a spiral, whatever curveFn draws —
 // paired with renderRibbonIsland) for a single elongated island,
 // computeLobeLayout (paired with renderLobeIsland) for a cluster of
-// fused rounded lobes, and each hub's own bespoke layout (Numeria
-// Peaks/Lab Archipelago) for separate islands — every caller supplies
-// its own zone list/colors/decorations and its own marker HTML either
-// way; this module only owns the math, the shared SVG scaffolding, and
-// the movement/camera/fullscreen wiring.
+// fused rounded lobes, computeRingLayout (paired with renderRingIsland)
+// for one closed loop of land with a real hole open at its own center,
+// and each hub's own bespoke layout (Numeria Peaks/Lab Archipelago) for
+// separate islands — every caller supplies its own zone list/colors/
+// decorations and its own marker HTML either way; this module only owns
+// the math, the shared SVG scaffolding, and the movement/camera/
+// fullscreen wiring.
 import { closedBlobPath } from "./lessonTerrain.js";
 export const WORLD_W = 2200;
 export const WORLD_H = 1600;
@@ -791,6 +793,18 @@ export function buildShorelinePolygons(root, sampleCount = 48) {
   });
 }
 
+// A smoothed open polyline (quadratic-curve-through-midpoints, the same
+// "never a hard corner" treatment every organic coastline here uses) as
+// just the `L`/`Q` commands past its own first point — the caller always
+// prefixes the actual `M` to its own path's first point, since both
+// renderRibbonIsland's bands and renderRingIsland's wedges below reuse
+// this same smoothing on two different pieces of one larger `d` string
+// rather than a whole path each.
+function smoothOpenPath(pts) {
+  const mid = pts.map((a, j) => (j === pts.length - 1 ? "" : ` Q${a.x.toFixed(1)},${a.y.toFixed(1)} ${((a.x + pts[j + 1].x) / 2).toFixed(1)},${((a.y + pts[j + 1].y) / 2).toFixed(1)}`));
+  return `L${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}${mid.join("")}`;
+}
+
 export function renderRibbonIsland(zoneGroups, curveFn, { seed = 1, baseWidth = 260, shoreRingWidth = 50 } = {}) {
   const curve = sampleParametricCurve(curveFn, 300);
   const total = curve.length;
@@ -836,11 +850,6 @@ export function renderRibbonIsland(zoneGroups, curveFn, { seed = 1, baseWidth = 
       right.push({ x: cp.x - perpX * w, y: cp.y - perpY * w });
     });
     return { left, right };
-  }
-
-  function smoothOpenPath(pts) {
-    const mid = pts.map((a, j) => (j === pts.length - 1 ? "" : ` Q${a.x.toFixed(1)},${a.y.toFixed(1)} ${((a.x + pts[j + 1].x) / 2).toFixed(1)},${((a.y + pts[j + 1].y) / 2).toFixed(1)}`));
-    return `L${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}${mid.join("")}`;
   }
 
   const outer = ring(baseWidth);
@@ -972,4 +981,156 @@ export function renderLobeIsland(zoneGroups, { ringCenter, ringRadius, lobeRadiu
     .join("");
 
   return shore + lobes;
+}
+
+// A third structurally different shape again — not a single spine
+// (computeCurveLayout) and not separate lobes fused around a shared
+// center (computeLobeLayout), but one continuous closed loop of land
+// with a real hole open at its own middle: an atoll, walkable the whole
+// way around with nowhere that reads as a dead end, rather than a
+// coastline you walk the *length* of or a cluster of petals you walk
+// *between*. Built for Lexicon Shoals (see satRwHub.js's own header
+// comment for the full brief).
+//
+// computeRingLayout is the *positions* half (pass the same
+// `center`/`outerRadius`/`innerRadius` — and `shoreRingWidth`, if
+// renderRingIsland below is called with a non-default one — so a zone's
+// own markers land inside the same wedge its own color actually fills);
+// renderRingIsland is the *art* half (pass as `regionShapes`, alongside
+// `landmass: () => ""`, same reasoning as renderRibbonIsland's/
+// renderLobeIsland's own doc comments). Each zone is its own angular
+// wedge of the loop, in `zones` order same as every other layout here,
+// so ZONES[i] still lines up with the same real reporting category no
+// matter which of these three a given hub actually uses.
+const RING_N = 100;
+
+// This ring's own two boundaries at once (outer shore, inner hole) —
+// exported so a caller building its own isWalkable polygons (see
+// satRwHub.js) can derive the *exact* same points renderRingIsland below
+// draws, purely from shared params: the same "independently derive
+// matching geometry from identical inputs" contract computeCurveLayout/
+// renderRibbonIsland already use for a curveFn, just for a closed loop
+// instead of an open spine. pointInPolygon needs no special wraparound
+// handling on either array — its own loop already treats the last point
+// as adjacent to the first.
+export function ringBoundaryPoints({ center, outerRadius, innerRadius, seed = 1, jitter = 0.1 }) {
+  return {
+    outer: organicRingPoints(center, outerRadius, seed * 11, RING_N, [-jitter, jitter]),
+    inner: organicRingPoints(center, innerRadius, seed * 19 + 5, RING_N, [-jitter, jitter]),
+  };
+}
+
+// closedBlobPath (lessonTerrain.js) doesn't draw straight lines between
+// `pts` — it's a closed loop of quadratic Béziers, each one running
+// between two consecutive *midpoints* and bulging toward the raw point
+// between them as its own control point, so the actual rendered curve
+// never touches `pts` themselves except in the limit. A point-in-polygon
+// check built straight off raw `pts` (as ringBoundaryPoints above
+// returns) is close almost everywhere, but can diverge by many pixels
+// right where two neighboring points differ sharply — exactly what
+// organicRingPoints' own per-point jitter produces — so a caller
+// building a walkable check off this ring's own boundaries (see
+// satRwHub.js) should sample the *curve itself* with this function
+// instead, not `pts` directly, or "walkable" and "actually drawn as
+// land" can quietly disagree by tens of pixels at a jittery seam.
+export function sampleClosedBlobPath(pts, samplesPerSegment = 6) {
+  const n = pts.length;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n];
+    const cur = pts[i];
+    const next = pts[(i + 1) % n];
+    const start = { x: (prev.x + cur.x) / 2, y: (prev.y + cur.y) / 2 };
+    const end = { x: (cur.x + next.x) / 2, y: (cur.y + next.y) / 2 };
+    for (let s = 0; s < samplesPerSegment; s++) {
+      const t = s / samplesPerSegment;
+      const mt = 1 - t;
+      out.push({
+        x: mt * mt * start.x + 2 * mt * t * cur.x + t * t * end.x,
+        y: mt * mt * start.y + 2 * mt * t * cur.y + t * t * end.y,
+      });
+    }
+  }
+  return out;
+}
+
+export function computeRingLayout(items, zones, { center, outerRadius, innerRadius, shoreRingWidth = 46 }) {
+  const n = zones.length;
+  const perZone = Math.ceil(items.length / n);
+  // Markers stay well inside both the outer shore's own sand rim and the
+  // inner hole's own sand rim, never right at either edge — same
+  // "don't crowd the actual coastline" reasoning computeCurveLayout's own
+  // taper-aware lane search uses, just a fixed inset here since a ring's
+  // own band width doesn't taper along its length the way a spine
+  // narrows toward its own two ends.
+  const bandLo = innerRadius + shoreRingWidth * 1.6;
+  const bandHi = outerRadius - shoreRingWidth * 1.6;
+  const midRadius = (bandLo + bandHi) / 2;
+  const bandHalf = (bandHi - bandLo) / 2;
+
+  return items.map((item, i) => {
+    const zoneIndex = Math.min(Math.floor(i / perZone), n - 1);
+    const zone = zones[zoneIndex];
+    const indexInZone = i - zoneIndex * perZone;
+    const itemsInZone = Math.min(perZone, items.length - zoneIndex * perZone);
+    const wedgeLo = (zoneIndex / n) * Math.PI * 2;
+    const wedgeHi = ((zoneIndex + 1) / n) * Math.PI * 2;
+    const inset = (wedgeHi - wedgeLo) * 0.16;
+    const angle = itemsInZone > 1 ? wedgeLo + inset + (indexInZone / (itemsInZone - 1)) * (wedgeHi - wedgeLo - inset * 2) : (wedgeLo + wedgeHi) / 2;
+    // Alternates between the band's own inner and outer half so
+    // consecutive markers don't all land in one perfectly even ring —
+    // same "break up an otherwise robotic cycle" spirit as
+    // computeCurveLayout's own LANE_OFFSETS search, just a plain
+    // alternation here since a wedge only ever needs two rows.
+    const radial = midRadius + (indexInZone % 2 === 0 ? -1 : 1) * bandHalf * 0.55;
+    const x = center.x + Math.cos(angle) * radial;
+    const y = center.y + Math.sin(angle) * radial;
+    return {
+      item,
+      zone,
+      x,
+      y,
+      dockX: x + -Math.sin(angle) * 40,
+      dockY: y + Math.cos(angle) * 40,
+    };
+  });
+}
+
+// The ring's own art: one sand-colored annulus (the outer boundary minus
+// the inner hole, cut with `fill-rule="evenodd"` so the hole actually
+// shows through to whatever's behind this scene — open sky for Lexicon
+// Shoals — rather than reading as colored land) plus one zone-colored
+// wedge per zone, each inset from both the outer shore and the inner
+// hole by `shoreRingWidth` so a thin sand rim shows past it on both
+// edges, same "sand rim visible past the color fill" relationship every
+// other hub's own regionShapes already has with its own shoreline —
+// just on two edges here instead of one. Adjacent wedges share their own
+// boundary points exactly (sliced from one shared, closed point loop
+// rather than each independently re-jittering its own edges), so they
+// fuse into one seamless ring with no hairline gaps at the seams, same
+// trick renderRibbonIsland's own bands already use along its spine.
+function closeLoop(pts) {
+  return [...pts, pts[0]];
+}
+export function renderRingIsland(zoneGroups, { center, outerRadius, innerRadius, seed = 1, shoreRingWidth = 46 } = {}) {
+  const { outer, inner } = ringBoundaryPoints({ center, outerRadius, innerRadius, seed });
+  const shore = `<path d="${closedBlobPath(outer)} ${closedBlobPath(inner)}" fill="${RIBBON_SAND}" fill-rule="evenodd" />`;
+
+  const bandOuter = closeLoop(organicRingPoints(center, outerRadius - shoreRingWidth, seed * 11, RING_N, [-0.1, 0.1]));
+  const bandInner = closeLoop(organicRingPoints(center, innerRadius + shoreRingWidth, seed * 19 + 5, RING_N, [-0.1, 0.1]));
+
+  const n = zoneGroups.length;
+  const wedges = zoneGroups
+    .map(({ zone }, i) => {
+      const loIdx = Math.round((i / n) * RING_N);
+      const hiIdx = Math.round(((i + 1) / n) * RING_N);
+      const outerArc = bandOuter.slice(loIdx, hiIdx + 1);
+      const innerArc = bandInner.slice(loIdx, hiIdx + 1);
+      if (outerArc.length < 2) return "";
+      const d = `M${outerArc[0].x.toFixed(1)},${outerArc[0].y.toFixed(1)} ${smoothOpenPath(outerArc.slice(1))} ${smoothOpenPath([...innerArc].reverse())} Z`;
+      return `<path d="${d}" fill="${zone.fill}" />`;
+    })
+    .join("");
+
+  return shore + wedges;
 }
