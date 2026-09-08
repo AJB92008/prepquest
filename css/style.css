@@ -1473,6 +1473,20 @@ input[type="password"] {
   background: radial-gradient(ellipse 90% 75% at 50% 38%, #2c4652 0%, #182c38 48%, #060d13 100%);
 }
 
+/* Lexicon Shoals (SAT Reading & Writing's own hub, satRwHub.js) floats in
+   open sky rather than open water — .hub-viewport's own default above is
+   ACT's ocean-blue family, so this overrides it with the exact same
+   gradient .sky-scene itself already uses on the World Map, matching
+   every other hub's own "match this island's actual surroundings"
+   override above. */
+.sky-scene .hub-viewport {
+  background: linear-gradient(180deg, #a9c9ec 0%, #cfe0ee 32%, #fbdfc0 68%, #f7c9a0 100%);
+}
+
+:root[data-theme="dark"] .sky-scene .hub-viewport {
+  background: linear-gradient(180deg, #1c2c47 0%, #2c3c58 32%, #4a3c4a 68%, #5c4438 100%);
+}
+
 .hub-viewport:fullscreen {
   width: 100vw;
   height: 100vh;

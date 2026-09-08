@@ -14,6 +14,7 @@ import { renderEnglishHub } from "./islandHub.js";
 import { renderMathHub } from "./mathHub.js";
 import { renderReadingHub } from "./readingHub.js";
 import { renderScienceHub } from "./scienceHub.js";
+import { renderSatRwHub } from "./satRwHub.js";
 
 const ROW_HEIGHT = 148;
 
@@ -56,6 +57,15 @@ export function renderIsland(root, navigate, { subjectId }) {
   }
   if (subjectId === "science") {
     renderScienceHub(root, navigate, subject);
+    return;
+  }
+
+  // SAT Reading & Writing (Lexicon Shoals) is the first non-ACT subject
+  // to get this same walkable-hub treatment, reskinned for SAT's own Sky
+  // Islands theme (see satRwHub.js's own header comment) instead of
+  // ACT's ocean.
+  if (subjectId === "sat-rw") {
+    renderSatRwHub(root, navigate, subject);
     return;
   }
 
