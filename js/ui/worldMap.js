@@ -209,9 +209,9 @@ const SUBJECT_ISLAND_ART = {
   "sat-rw": (color) => `
     <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
       <ellipse cx="70" cy="98" rx="34" ry="7" fill="#ffffff" opacity="0.55" />
-      <path d="M32,54 L24,66 L30,80 L44,94 L66,102 L86,92 L96,76 L90,60 L100,54 Z" fill="#8a6a48" />
-      <path d="M66,102 L86,92 L96,76 L90,60 Z" fill="#6b4d30" opacity="0.4" />
-      <path d="M62,101 L58,115 M66,102 L67,119 M71,101 L77,113" fill="none" stroke="#6b4d30" stroke-width="1.5" stroke-linecap="round" opacity="0.7" />
+      <path d="M32,54 L24,68 L32,82 L48,94 L70,104 L92,94 L108,82 L116,68 L108,54 Z" fill="#8a6a48" />
+      <path d="M70,104 L92,94 L108,82 Z" fill="#6b4d30" opacity="0.4" />
+      <path d="M66,103 L61,116 M70,104 L70,119 M74,103 L79,115" fill="none" stroke="#6b4d30" stroke-width="1.5" stroke-linecap="round" opacity="0.7" />
       <path d="M32,54 Q26,34 52,24 Q70,16 88,24 Q114,34 108,54 Q98,66 70,68 Q42,66 32,54 Z" fill="${ISLAND_SAND}" />
       <path d="M40,52 Q35,36 56,28 Q70,22 84,28 Q105,36 100,52 Q92,60 70,62 Q48,60 40,52 Z" fill="${color}" />
       <path d="M70,38 L70,54 M70,38 Q58,36 52,42 M70,38 Q82,36 88,42" fill="none" stroke="#fdf8ec" stroke-width="3" stroke-linecap="round" />
@@ -222,9 +222,9 @@ const SUBJECT_ISLAND_ART = {
   "sat-math": (color) => `
     <svg viewBox="0 0 140 120" width="140" height="120" aria-hidden="true">
       <ellipse cx="70" cy="98" rx="34" ry="7" fill="#ffffff" opacity="0.55" />
-      <path d="M32,54 L24,66 L30,80 L44,94 L66,102 L86,92 L96,76 L90,60 L100,54 Z" fill="#8a6a48" />
-      <path d="M66,102 L86,92 L96,76 L90,60 Z" fill="#6b4d30" opacity="0.4" />
-      <path d="M62,101 L58,115 M66,102 L67,119 M71,101 L77,113" fill="none" stroke="#6b4d30" stroke-width="1.5" stroke-linecap="round" opacity="0.7" />
+      <path d="M32,54 L24,68 L32,82 L48,94 L70,104 L92,94 L108,82 L116,68 L108,54 Z" fill="#8a6a48" />
+      <path d="M70,104 L92,94 L108,82 Z" fill="#6b4d30" opacity="0.4" />
+      <path d="M66,103 L61,116 M70,104 L70,119 M74,103 L79,115" fill="none" stroke="#6b4d30" stroke-width="1.5" stroke-linecap="round" opacity="0.7" />
       <path d="M32,54 Q26,34 52,24 Q70,16 88,24 Q114,34 108,54 Q98,66 70,68 Q42,66 32,54 Z" fill="${ISLAND_SAND}" />
       <path d="M40,52 Q35,36 56,28 Q70,22 84,28 Q105,36 100,52 Q92,60 70,62 Q48,60 40,52 Z" fill="${color}" />
       <path d="M50,50 L64,30 L78,50 Z" fill="#fdf8ec" />
