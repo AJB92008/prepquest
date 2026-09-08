@@ -187,7 +187,25 @@
 // rival orbit diagrams squared off on opposite sides of the trail for
 // Theory Throwdown (competing models of the same system) and a
 // telescope aimed along a dashed predicted trajectory toward a target
-// star for Prediction Station. Add a
+// star for Prediction Station. Lexicon Shoals' own Archive Stacks zone
+// (the first of SAT Reading & Writing's four zones, see satRwHub.js's
+// own ZONES) starts its own Celestial Archive family — a floating
+// archive under a violet night sky, warm gold starlight standing in for
+// candlelight — with five skills, not a matching pair: Core Idea Finder
+// gets one oversized glowing codex floating open mid-scene, everything
+// else kept small and dim, the same "one unmissable shape" idea
+// Athenaeum Reef's own Big Picture uses; Evidence Hunter gets a field of
+// ordinary dim scrolls with one lantern-lit, open, marked scroll singled
+// out at every stop; Chart Reader gets a row of brass astrolabes, each
+// tracing a different real chart type — bar, line, scatter, pie — in
+// starlight; Read Between the Lines gets a dimmer, quieter variant of
+// the family where each stop's own page fragment carries two solid ink
+// lines with one faint glowing line hidden in the gap between them, the
+// meaning the passage never states outright; and Detail Sorter gets the
+// zone's own deliberate opposite of Core Idea Finder's single codex — a
+// dense drift of small index cards, mini scrolls, and wax seals that
+// reads visibly messier near the top and settles into calmer rows by
+// the time it reaches the boss. Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
 // engine.
@@ -251,6 +269,11 @@ import { fieldLogCampTheme } from "./lessonThemes/fieldLogCamp.js";
 import { variableVaultPlotsTheme } from "./lessonThemes/variableVaultPlots.js";
 import { theoryOrbitTheme } from "./lessonThemes/theoryOrbit.js";
 import { predictionRidgeTheme } from "./lessonThemes/predictionRidge.js";
+import { celestialCodexTheme } from "./lessonThemes/celestialCodex.js";
+import { lanternFoliosTheme } from "./lessonThemes/lanternFolios.js";
+import { starChartGalleryTheme } from "./lessonThemes/starChartGallery.js";
+import { umbralArchiveTheme } from "./lessonThemes/umbralArchive.js";
+import { catalogDriftTheme } from "./lessonThemes/catalogDrift.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -312,6 +335,11 @@ export const LESSON_THEMES = {
   "sc-investigation": variableVaultPlotsTheme,
   "sc-conflicting": theoryOrbitTheme,
   "sc-evaluate": predictionRidgeTheme,
+  "satrw-centralidea": celestialCodexTheme,
+  "satrw-evidence-text": lanternFoliosTheme,
+  "satrw-evidence-data": starChartGalleryTheme,
+  "satrw-inference": umbralArchiveTheme,
+  "satrw-detailsort": catalogDriftTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
