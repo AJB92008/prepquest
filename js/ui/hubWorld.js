@@ -24,7 +24,18 @@ export const CENTER = { x: WORLD_W / 2, y: WORLD_H / 2 };
 // it reads as the actual coastline rather than an invisible wall.
 export const WALK_MARGIN = 170;
 export const LANDMARK_CLEARING_R = 130;
-export const AVATAR_SPEED = 6.2; // world px per animation frame
+// World px per second, not per frame — tick() below scales this by real
+// elapsed time (see MAX_TICK_MS), so the avatar moves at the same real-
+// world speed regardless of display refresh rate. 372 preserves the
+// original feel exactly (was 6.2 world px/frame, tuned by eye at a
+// 60fps/16.67ms frame) rather than changing how fast anything actually
+// looks — only fixing *what* it scales by, not the target speed itself.
+export const AVATAR_SPEED = 372;
+// Caps how much elapsed time a single tick() is allowed to act on — a
+// dropped frame (GC pause, a backgrounded tab regaining focus, DevTools
+// open) would otherwise report a huge elapsed gap and move the avatar a
+// long way in one jump instead of just resuming at normal speed.
+const MAX_TICK_MS = 100;
 // The "boss" spot always sits by itself at the bottom-middle, below every
 // zone, reached by its own dark path rather than one of the tan trail
 // forks — a deliberately different, more ominous route than the ones
@@ -307,6 +318,7 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
   let viewportH = 0;
   let idleTimer = null;
   let wasMoving = false;
+  let lastTimestamp = null;
 
   function scheduleHint() {
     clearTimeout(idleTimer);
@@ -355,8 +367,14 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
     lastTarget = null;
   }
 
-  function tick() {
+  function tick(timestamp) {
     if (stopped) return;
+    // First tick has no prior timestamp to diff against — assume one
+    // nominal 60fps frame rather than moving 0px, so movement starts
+    // immediately instead of needing two frames to get going.
+    const elapsedMs = lastTimestamp === null ? 16.67 : Math.min(timestamp - lastTimestamp, MAX_TICK_MS);
+    lastTimestamp = timestamp;
+    const dtSeconds = elapsedMs / 1000;
     let dx = 0;
     let dy = 0;
     let speedScale = 1;
@@ -381,8 +399,9 @@ export function wireMovement({ avatarEl, worldEl, viewportEl, hintEl, spawn, tar
         hideHint();
       }
       const len = Math.hypot(dx, dy) || 1;
-      const nx = x + (dx / len) * AVATAR_SPEED * speedScale;
-      const ny = y + (dy / len) * AVATAR_SPEED * speedScale;
+      const dist = AVATAR_SPEED * speedScale * dtSeconds;
+      const nx = x + (dx / len) * dist;
+      const ny = y + (dy / len) * dist;
       if (isWalkable(nx, ny)) {
         x = nx;
         y = ny;

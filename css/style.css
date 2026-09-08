@@ -889,29 +889,16 @@ input[type="password"] {
   50% { transform: translateY(-6px); }
 }
 
-/* The current-subject's boat mascot (ocean scene only — see
-   renderBoatMascot in worldMap.js) replaces the plain floating monster
-   above: .map-mascot's own positioning was tuned for hovering above a
-   plain 88px circle, not resting beside a much larger (260x224) island-
-   art button, so this variant repositions rather than reusing top:-58px
-   as-is. The bob animation and light/dark contact-shadow filter both
-   stay on .map-mascot itself — same low-contrast-avatar-against-water
-   problem its own comment describes applies just as much to a monster in
-   a boat. The outer .map-boat-anchor (not this element) is what
-   wireBoatDrift's own per-frame transform moves — an animation and a
-   per-frame inline transform on the very same element would fight every
-   frame, with the animation always winning the computed value and
-   silently freezing the drift. */
-.map-mascot-boat {
-  position: static;
-  top: auto;
-}
-
-.map-boat-anchor {
-  position: absolute;
-  left: 178px;
-  top: 78px;
-  z-index: 2;
+/* The World Map's own boat avatar (ocean scene only — see
+   renderBoatAvatar in worldMap.js) sails the whole ocean canvas via
+   wireMovement, same as every other hub's own .hub-avatar — so it reuses
+   that class's own position/centering/contact-shadow rule as-is, just
+   re-centered here since a wide, short boat (.map-boat below) doesn't
+   suit .hub-avatar's own translate(-50%,-60%) (tuned for an upright
+   standing monster's own feet). No bob animation, matching every other
+   hub's own avatar. */
+.map-boat-avatar {
+  transform: translate(-50%, -50%);
 }
 
 .map-boat {
@@ -937,31 +924,15 @@ input[type="password"] {
   line-height: 0;
 }
 
-/* wireBoatDrift's own local WASD/joystick nudge (worldMap.js) — a small
-   patch of open water right beside the boat's own moored spot, not this
-   whole screen's navigation (which stays click-to-enter-an-island,
-   unchanged either way). Reuses hubWorld.js's own .hub-joystick markup/
-   look, sized down from its usual 92px since this is a secondary,
-   decorative control living right next to one mascot, not a screen's
-   primary movement control. */
-.map-boat-joystick-wrap {
-  position: absolute;
-  left: 178px;
-  top: 160px;
-  z-index: 2;
-}
-
-.map-boat-joystick-wrap .hub-joystick {
-  position: static;
-  left: auto;
-  bottom: auto;
-  width: 60px;
-  height: 60px;
-}
-
-.map-boat-joystick-wrap .hub-joystick-knob {
-  width: 26px;
-  height: 26px;
+/* The World Map's own walkable canvas (ocean scene only) sits in normal
+   page flow below the heading/shortcuts rather than filling the whole
+   viewport the way .hub-island-screen's flex-column layout does for the
+   4 subject hubs — this screen keeps its usual scrolling page above the
+   canvas, so .hub-viewport needs an explicit height here instead of the
+   flex:1 1 auto/min-height it gets there. */
+.ocean-map-viewport {
+  height: 560px;
+  margin: 20px auto 0;
 }
 
 /* The boss bridge's own torch accents (islandHub.js's own
