@@ -110,8 +110,19 @@ const SKILL_TRIGGER_RADIUS = 50;
 // `description` is what the legend shows for each zone — a plain
 // description of what it covers, not the official College Board category
 // name, matching islandHub.js's own reasoning for its own zones.
+// Archive Stacks' own fill is a soft twilight violet, not the plain
+// khaki every other zone here still uses — it's the one zone whose
+// actual lesson-path scenes (see lessonThemes/celestialCodex.js and its
+// four siblings) all share a specific "Celestial Archive" palette, a
+// violet night sky lit by warm gold starlight, so the wedge itself reads
+// as a piece of that same sky rather than clashing with what a player
+// actually sees once they walk in. Kept at roughly the same lightness/
+// saturation as its 3 sibling wedges below (all light, fairly
+// desaturated pastels) rather than the lesson scenes' own much darker
+// background tones, so it reads as "this zone's own hue" without
+// looking like a heavy dark patch dropped into an otherwise pastel ring.
 const ZONES = [
-  { id: "stacks", name: "Archive Stacks", fill: "#d9c896", description: "Main ideas & evidence", decorations: [] },
+  { id: "stacks", name: "Archive Stacks", fill: "#a99bd8", description: "Main ideas & evidence", decorations: [] },
   { id: "grove", name: "Etymology Grove", fill: "#8fbf7a", description: "Word choice & structure", decorations: [] },
   { id: "scriptorium", name: "Scriptorium", fill: "#8fb8d9", description: "Organizing your writing", decorations: [] },
   { id: "garrison", name: "Grammar Garrison", fill: "#9aa3ad", description: "Grammar & sentence rules", decorations: [] },
