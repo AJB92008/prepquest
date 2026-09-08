@@ -200,8 +200,7 @@ export function renderWorldMap(root, navigate, { testId } = {}) {
           ${
             isOceanScene
               ? `
-                <button class="map-island-node map-island-node--art" data-subject="${subject.id}" aria-label="${subject.name} planet: ${stat.masteredCount} of ${stat.totalSkills} islands mastered" style="--island-color:${subject.color};--ring-pct:${pct}%">
-                  <span class="map-island-ring map-island-ring--art"></span>
+                <button class="map-island-node map-island-node--art" data-subject="${subject.id}" aria-label="${subject.name} planet: ${stat.masteredCount} of ${stat.totalSkills} islands mastered" style="--island-color:${subject.color}">
                   <span class="map-island-art">${renderSubjectIslandArt(subject.id, subject.color)}</span>
                 </button>
               `

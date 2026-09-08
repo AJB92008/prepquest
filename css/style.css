@@ -842,14 +842,13 @@ input[type="password"] {
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.18));
 }
 
-/* Sized to leave a clean gap inside .map-island-node--art's own 200px
-   circle for .map-island-ring--art's band to show all the way around —
-   at 1:1 with the SVG's own 140x120 markup attributes, too little of
-   each island's own silhouette would show past the ring to actually
-   read as a distinct shape per subject. */
+/* 1.5x the SVG's own 140x120 markup attributes — big enough that each
+   island's own silhouette (a curved ribbon, mountain peaks, fused reef
+   lobes, a twin archipelago) actually reads as a distinct shape per
+   subject at a glance. */
 .map-island-art svg {
-  width: 168px;
-  height: 144px;
+  width: 252px;
+  height: 216px;
   display: block;
 }
 
@@ -933,21 +932,15 @@ input[type="password"] {
 /* ACT's own ocean-scene variant: the island art (renderSubjectIslandArt
    in worldMap.js) *is* the button's own face, not a second icon layered
    on top of a plain circular disc the way every other test's map-
-   island-node still works — background/box-shadow both dropped so
-   nothing but the art and its progress ring actually paint. Sized
-   bigger than the art itself (see .map-island-art svg below) so
-   .map-island-ring--art's own circular band shows as a clean halo all
-   the way around the island's own irregular silhouette, not clipped
-   tight against one specific shape. */
+   island-node still works, and (per direction) no progress ring either
+   — background/box-shadow/ring all dropped so nothing but the art
+   itself actually paints. Sized to comfortably contain the art (see
+   .map-island-art svg below) plus room for its own hover scale. */
 .map-island-node--art {
-  width: 200px;
-  height: 200px;
+  width: 260px;
+  height: 224px;
   background: transparent;
   box-shadow: none;
-}
-
-.map-island-ring--art {
-  padding: 6px;
 }
 
 .map-island-ring {
