@@ -577,15 +577,18 @@ input[type="password"] {
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
 }
 
-/* ACT's World Map: a wide, calm ocean instead of the round planet-sphere
-   every other test still uses (see the isOceanScene branch in
-   worldMap.js) — a fixed, desaturated blue-teal palette rather than
-   --test-color, since "muted ocean water" is a specific look, not just
-   ACT's own brand purple recolored. Lighter toward the center, darker
-   toward the screen edges, to draw the eye inward the way a real wide
-   seascape photo would vignette. The wavy line texture is a small tiled
-   inline SVG (two soft sine-wave strokes) rather than an emoji/decoration
-   scatter, since real ripples read as fine linework, not shapes. */
+/* Each themed test's World Map (ACT/SAT/PSAT — see WORLD_MAP_THEMES in
+   worldMap.js) paints its own wide backdrop instead of the round planet-
+   sphere every untethed test still uses, with a fixed palette rather
+   than --test-color, since each one is a specific, deliberately chosen
+   look (muted ocean water, dawn sky, misty highlands), not just that
+   test's own brand color recolored. Lighter toward the center, darker
+   toward the screen edges on every one, to draw the eye inward the way a
+   real wide landscape photo would vignette.
+
+   ACT — a calm ocean; the wavy line texture is a small tiled inline SVG
+   (two soft sine-wave strokes) rather than an emoji/decoration scatter,
+   since real ripples read as fine linework, not shapes. */
 .ocean-scene {
   background: radial-gradient(ellipse 90% 75% at 50% 38%, #cfe3e6 0%, #6f9fae 48%, #2c4a5c 100%);
 }
@@ -610,19 +613,41 @@ input[type="password"] {
   opacity: 0.35;
 }
 
+/* SAT — Sky Islands: an open dawn sky the islands float in, warm near the
+   horizon and cooling toward the top of the screen, the inverse vertical
+   direction from the ocean's own center-out vignette (a sky's own light
+   source reads as "low near the horizon," not "in the middle"). No wave
+   texture overlay — a flat gradient alone already reads as open air;
+   adding linework here would fight the ambient clouds instead of
+   supporting them. */
+.sky-scene {
+  background: linear-gradient(180deg, #a9c9ec 0%, #cfe0ee 32%, #fbdfc0 68%, #f7c9a0 100%);
+}
+
+:root[data-theme="dark"] .sky-scene {
+  background: linear-gradient(180deg, #1c2c47 0%, #2c3c58 32%, #4a3c4a 68%, #5c4438 100%);
+}
+
+.sky-scene > * {
+  position: relative;
+  z-index: 1;
+}
+
 .ocean-scene > * {
   position: relative;
   z-index: 1;
 }
 
-/* Background scenery (ship sails, birds, a sun, sea life) — fixed near
-   the top of the screen rather than scattered down the whole path, so it
-   reads as horizon-line detail glimpsed once, not as repeating
-   decoration. A prior version of this kept everything at 0.32 opacity
-   and to 3 elements, reasoning that more would read as "twee" for an
-   ACT-studying teen — per direction, that read as flat and empty
-   instead, so this is a fuller scene at a less uniformly faint opacity. */
-.ocean-ambient {
+/* Background scenery per theme (ship sails/birds/a sun for the ocean,
+   clouds/a balloon/birds for the sky, etc. — see renderAmbientScene in
+   worldMap.js) — fixed near the top of the screen rather than scattered
+   down the whole path, so it reads as horizon-line detail glimpsed once,
+   not as repeating decoration. A prior version of the ocean's own set
+   kept everything at 0.32 opacity and to 3 elements, reasoning that more
+   would read as "twee" for an ACT-studying teen — per direction, that
+   read as flat and empty instead, so every theme's own set leans fuller,
+   at a less uniformly faint opacity. */
+.map-ambient {
   position: absolute;
   z-index: 1;
   opacity: 0.55;
@@ -630,7 +655,7 @@ input[type="password"] {
   filter: saturate(0.75);
 }
 
-.ocean-ambient-sun {
+.map-ambient-accent {
   opacity: 0.5;
   filter: saturate(0.6) blur(0.5px);
 }
@@ -889,16 +914,22 @@ input[type="password"] {
   50% { transform: translateY(-6px); }
 }
 
-/* The World Map's own boat (ocean scene only — see renderBoatRoamer/
-   wireBoatRoam in worldMap.js) roams freely inside .map-path-container
-   itself, not a fixed-canvas hub world — this screen's own layout/
-   scrolling stayed the original one every other test still uses (a full
-   walkable-hub-engine version of this screen was tried and explicitly
-   reverted). Positioned/centered/halo-shadowed the same way every hub's
-   own .hub-avatar is, just defined locally here since this element isn't
-   inside a .hub-viewport. No bob animation, since it's actively steerable
-   rather than idle. */
-.map-boat-roamer {
+/* Each themed test's World Map has its own vehicle (a boat for ACT, a
+   balloon for SAT, a gondola for PSAT — see renderVehicle/wireRoamer in
+   worldMap.js) that roams freely inside .map-path-container itself, not
+   a fixed-canvas hub world — this screen's own layout/scrolling stayed
+   the original one every other test still uses (a full walkable-hub-
+   engine version of this screen was tried and explicitly reverted).
+   .map-roamer is the shared outer wrapper wireRoamer's place() moves
+   every frame: positioned/halo-shadowed the same way every hub's own
+   .hub-avatar is, just defined locally here since this element isn't
+   inside a .hub-viewport. Its own centering transform is overridden per
+   vehicle below, since each one's visual weight sits in a different spot
+   relative to its own anchor point (a boat's hull near dead-center; a
+   balloon's basket well below its own envelope's center of mass). No bob
+   animation on any of them, since they're actively steerable rather than
+   idle. */
+.map-roamer {
   position: absolute;
   z-index: 3;
   transform: translate(-50%, -50%);
@@ -929,22 +960,49 @@ input[type="password"] {
   line-height: 0;
 }
 
-/* The boat's own on-screen joystick (ocean scene only) — fixed to the
-   browser window's own corner (not this page's own scroll position, and
-   not the boat's own current spot) so it's always reachable no matter how
-   far the player has scrolled down this map's own tall, normal-flow
-   page — a real WASD keyboard has no such problem, but a touch/mouse-drag
-   player needs the control to actually stay put. Reuses hubWorld.js's own
+/* SAT's balloon: taller than it is wide, envelope on top and a small
+   basket (where the rider actually sits) near the bottom — .map-roamer's
+   own translate(-50%,-50%) would center on the envelope's own middle,
+   floating the basket (and the player's own anchor point/island-level
+   alignment) well below where it should read as "resting." Shifted up by
+   the basket's own local y-center (100px into this 110px-tall graphic)
+   instead, so the basket itself — not the envelope — is what aligns with
+   the roamer's own position. */
+.map-vehicle-balloon {
+  transform: translate(-50%, -96px);
+}
+
+.map-balloon {
+  position: relative;
+  width: 90px;
+  height: 110px;
+}
+
+.map-balloon-rider {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 1;
+  line-height: 0;
+}
+
+/* Each themed World Map's own on-screen joystick — fixed to the browser
+   window's own corner (not this page's own scroll position, and not the
+   vehicle's own current spot) so it's always reachable no matter how far
+   the player has scrolled down this map's own tall, normal-flow page — a
+   real WASD keyboard has no such problem, but a touch/mouse-drag player
+   needs the control to actually stay put. Reuses hubWorld.js's own
    .hub-joystick markup/knob styling, just overriding its usual
    .hub-viewport-relative position: absolute with position: fixed here. */
-.map-boat-joystick-fixed {
+.map-roamer-joystick-fixed {
   position: fixed;
   left: 20px;
   bottom: 20px;
   z-index: 50;
 }
 
-.map-boat-joystick-fixed .hub-joystick {
+.map-roamer-joystick-fixed .hub-joystick {
   position: static;
 }
 
