@@ -11,11 +11,15 @@
 // Isle's spiral), lobes fused around a shared point (Athenaeum Reef), or
 // separate causeway-linked islands (Numeria Peaks/Lab Archipelago). See
 // hubWorld.js's own computeRingLayout/renderRingIsland doc comments for
-// the shared math and art this shape is built from. Still simpler than
-// Wordwood Isle in one real way beyond the shape itself — no bonus
-// landmark, since SAT Reading & Writing has no separate "vocabulary
-// builder" feature the way ACT English does, so this island is just its
-// 4 zones and the boss, nothing more.
+// the shared math and art this shape is built from. The boss himself
+// sits on his own small islet floating in the exact middle of that
+// hollow center — the lagoon of open sky stays open everywhere else —
+// reached by one bridge per zone rather than a single bridge off one
+// particular side, so every zone's own path converges on the same
+// shared boss. Still simpler than Wordwood Isle in one real way beyond
+// the shape itself — no bonus landmark, since SAT Reading & Writing has
+// no separate "vocabulary builder" feature the way ACT English does, so
+// this island is just its 4 zones and the boss, nothing more.
 import { gameState } from "../state.js";
 import { hudHTML, wireHud, showToast } from "./hud.js";
 import { showDevPanel, toggleDevPanel } from "./devPanel.js";
@@ -23,8 +27,8 @@ import { monsterSVG } from "./monster.js";
 import { getBossMonster } from "../data/bossMonsters.js";
 import { getLessonCount } from "../data/questions/index.js";
 import { glowVars } from "./pathTrail.js";
+import { closedBlobPath } from "./lessonTerrain.js";
 import {
-  BOSS_POS,
   BOSS_TRIGGER_RADIUS,
   WORLD_W,
   WORLD_H,
@@ -33,6 +37,7 @@ import {
   computeRingLayout,
   ringBoundaryPoints,
   sampleClosedBlobPath,
+  organicRingPoints,
   renderWorldSvg,
   renderRingIsland,
   renderCurveTrails,
@@ -60,6 +65,24 @@ const SHORE_RING_WIDTH = 46;
 const RING_JITTER = 0.1;
 const RING_SEED = 3;
 const BOSS_BRIDGE_WIDTH = 68;
+
+// The boss's own islet, floating dead center in the ring's own hollow
+// middle. BOSS_ISLET_RADIUS (100) is this islet's *outer*, sand-shore
+// radius — same role OUTER_RADIUS plays for the ring itself, i.e. this
+// is also the radius bridges anchor against and isWalkable checks —
+// comfortably smaller than INNER_RADIUS (230) even at both radii's own
+// worst-case ±10% jitter (worst-case islet edge ~110 vs worst-case hole
+// edge ~207), leaving real open sky for the 4 bridges to visibly cross.
+const BOSS_ISLET_RADIUS = 100;
+const BOSS_ISLET_RIM = 14;
+const BOSS_ISLET_SEED = 7;
+// How far each bridge's own two ends get pulled past the coastline
+// vertex they're anchored to — one end deeper into the ring's own land,
+// the other deeper into the islet's — so each end genuinely overlaps
+// real walkable ground instead of just grazing a single boundary point.
+// See this file's own render call for the full reasoning (same problem,
+// and same fix, as the single external bridge this design replaced).
+const BRIDGE_INSET = 40;
 
 const DEV_MODE_CLICKS = 10;
 const DEV_MODE_WINDOW_MS = 5000;
@@ -144,7 +167,7 @@ function renderBossMarker(boss, bossStateClass, subject) {
   const locked = bossStateClass === "is-locked";
   const cleared = bossStateClass === "is-cleared";
   return `
-    <div class="hub-marker-wrap" style="left:${BOSS_POS.x}px;top:${BOSS_POS.y}px;">
+    <div class="hub-marker-wrap" style="left:${RING_CENTER.x}px;top:${RING_CENTER.y}px;">
       <button class="hub-boss-marker is-grammar-golem ${bossStateClass}" data-boss ${locked ? "disabled" : ""}
         aria-label="${boss.name}, ${subject.name} Boss Quiz${cleared ? " (cleared)" : locked ? `: locked until every skill on this island is mastered` : ""}">
         ${monsterSVG(boss.avatar, { size: 92 })}
@@ -153,6 +176,44 @@ function renderBossMarker(boss, bossStateClass, subject) {
       <span class="hub-skill-name hub-boss-name">${locked ? "🔒 " : ""}${boss.name}</span>
     </div>
   `;
+}
+
+// The islet's own art: an outer sand-colored shore (same style, same
+// jitter treatment, as the ring's own coastline) with a darker, inset
+// fill reading as scorched or ominous ground — this islet is the one
+// spot on the whole map that's deliberately *not* one of the 4 zones'
+// own colors, so it reads as its own distinct "boss territory" the
+// moment it comes into view rather than a 5th zone.
+function renderBossIslet(outerCtrl) {
+  const innerPts = organicRingPoints(RING_CENTER, BOSS_ISLET_RADIUS - BOSS_ISLET_RIM, BOSS_ISLET_SEED + 3, 60, [-0.1, 0.1]);
+  return `<path d="${closedBlobPath(outerCtrl)}" fill="#ecdfb8" /><path d="${closedBlobPath(innerPts)}" fill="#2c211c" opacity="0.82" />`;
+}
+
+// A point's own angle around `center`, and the shortest angular distance
+// between two such angles (0..π, wraparound-safe) — used below to find
+// each zone's own bridge anchor by direction rather than raw distance,
+// since a jittery boundary's own nearest-by-distance point can otherwise
+// belong to a neighboring zone.
+function angleAround(center, p) {
+  return Math.atan2(p.y - center.y, p.x - center.x);
+}
+function angularDist(a, b) {
+  const d = Math.abs(a - b) % (Math.PI * 2);
+  return d > Math.PI ? Math.PI * 2 - d : d;
+}
+function nearestByAngle(pts, center, targetAngle) {
+  return pts.reduce((best, p) => (angularDist(angleAround(center, p), targetAngle) < angularDist(angleAround(center, best), targetAngle) ? p : best));
+}
+// Moves `p` along its own center->p ray by `dist` — positive pushes it
+// further from `center` (deeper into the ring's own land, past the
+// hole's edge), negative pulls it toward `center` (deeper into the
+// islet's own land) — see BRIDGE_INSET's own comment for why either
+// bridge end needs this at all.
+function offsetFromCenter(p, center, dist) {
+  const dx = p.x - center.x;
+  const dy = p.y - center.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: p.x + (dx / len) * dist, y: p.y + (dy / len) * dist };
 }
 
 // A rectangle polygon for the boss bridge's own walkable span — a bridge
@@ -179,10 +240,8 @@ function bridgePolygon(ax, ay, bx, by, halfWidth) {
 }
 
 // Where an avatar first spawns: the middle of the walkable band, at the
-// top of the ring — an arbitrary but stable point on the loop (there's
-// no "start" the way a spine has two distinct ends), chosen so a fresh
-// spawn reads as "on the ring, roughly opposite the boss bridge at the
-// bottom" rather than right on top of either.
+// top of the ring — an arbitrary but stable point on the loop, since
+// there's no "start" the way a spine has two distinct ends.
 const SPAWN_ANGLE = -Math.PI / 2;
 const SPAWN_RADIUS = (INNER_RADIUS + OUTER_RADIUS) / 2;
 
@@ -219,44 +278,48 @@ export function renderSatRwHub(root, navigate, subject) {
   });
   const ringOuter = sampleClosedBlobPath(ringOuterCtrl);
   const ringInner = sampleClosedBlobPath(ringInnerCtrl);
-  // Whichever of the outer shore's own points sits physically closest to
-  // BOSS_POS (bottom-middle of the world, well outside the ring itself,
-  // same fixed spot every hub's own boss uses) — the bridge's own anchor
-  // on this island's actual rendered coastline, not a hand-guessed
-  // coordinate that could drift out of sync if the ring's own geometry
-  // ever changes. Pulled BRIDGE_INSET back toward RING_CENTER before use
-  // below (both for the rendered bridge and its own walkable polygon) —
-  // an anchor sitting exactly *on* the coastline is a single grazing
-  // point of the walkable annulus, not a real overlap with it, so the
-  // bridge's own near end needs to actually reach a few steps onto real
-  // land the way islandHub.js's own pullBackToEdge does for its bridges,
-  // or the two walkable regions can share only that one knife-edge point
-  // and leave the avatar stuck right at the shore.
-  const bridgeAnchor = ringOuter.reduce((best, p) => (Math.hypot(p.x - BOSS_POS.x, p.y - BOSS_POS.y) < Math.hypot(best.x - BOSS_POS.x, best.y - BOSS_POS.y) ? p : best));
-  const BRIDGE_INSET = 40;
-  const bridgeStart = (() => {
-    const dx = RING_CENTER.x - bridgeAnchor.x;
-    const dy = RING_CENTER.y - bridgeAnchor.y;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: bridgeAnchor.x + (dx / len) * BRIDGE_INSET, y: bridgeAnchor.y + (dy / len) * BRIDGE_INSET };
-  })();
+
+  // The islet's own outer (sand-shore) boundary, same "independently
+  // re-derive matching geometry from identical params" contract as the
+  // ring's own boundaries above — sampled the same way for the same
+  // reason (its walkable check needs to match its own rendered curve,
+  // not just the raw jittered control points).
+  const isletOuterCtrl = organicRingPoints(RING_CENTER, BOSS_ISLET_RADIUS, BOSS_ISLET_SEED, 60, [-0.1, 0.1]);
+  const isletOuter = sampleClosedBlobPath(isletOuterCtrl);
+
+  // One bridge per zone, anchored at that zone's own angular midpoint —
+  // the same wedge midpoint computeRingLayout uses to center its own
+  // markers — so every zone's own trail visibly leads toward the same
+  // bridge rather than an arbitrary or unrelated point on the ring.
+  // Each end is pulled BRIDGE_INSET past its own coastline vertex (see
+  // that constant's own comment) so both ends genuinely overlap real
+  // land instead of grazing a single boundary point.
+  const bossBridges = ZONES.map((zone, i) => {
+    const targetAngle = ((i + 0.5) / ZONES.length) * Math.PI * 2;
+    const ringPt = nearestByAngle(ringInner, RING_CENTER, targetAngle);
+    const isletPt = nearestByAngle(isletOuter, RING_CENTER, targetAngle);
+    return {
+      zone,
+      ringEnd: offsetFromCenter(ringPt, RING_CENTER, BRIDGE_INSET),
+      isletEnd: offsetFromCenter(isletPt, RING_CENTER, -BRIDGE_INSET),
+    };
+  });
 
   const sceneSvg = renderWorldSvg(layout, {
     ariaLabel:
-      "Lexicon Shoals, one ring-shaped atoll of floating land looped around a hollow gap of open sky at its own center, split into four wedges around the loop — Archive Stacks, Etymology Grove, the Scriptorium, and Grammar Garrison — with a short plank bridge off its southern rim leading to the boss's own floating platform",
+      "Lexicon Shoals, one ring-shaped atoll of floating land looped around a hollow gap of open sky at its own center, split into four wedges around the loop — Archive Stacks, Etymology Grove, the Scriptorium, and Grammar Garrison — with the boss's own islet floating dead center in that hollow, reached by one bridge per wedge",
     landmass: () => "",
     regionShapes: (zoneGroups) => renderRingIsland(zoneGroups, { center: RING_CENTER, outerRadius: OUTER_RADIUS, innerRadius: INNER_RADIUS, seed: RING_SEED, shoreRingWidth: SHORE_RING_WIDTH }),
     trails: renderCurveTrails,
     // Same "dressed-up bridge" idea as islandHub.js's own Wordwood Isle
     // bridges, just without that file's own ominous mist/torch treatment
     // (this island stays plain otherwise, see this file's own header
-    // comment) — a plain plank bridge, plus the same dark boss-lair
-    // clearing every other hub's own default bossBridge-less path already
-    // draws under BOSS_POS, reproduced by hand here since supplying a
-    // custom bossBridge callback replaces that default entirely.
+    // comment) — the islet itself plus all 4 plank bridges, since
+    // supplying a custom bossBridge callback replaces renderWorldSvg's
+    // own default path+lair entirely and there's no single pair of
+    // points to hand it here.
     bossBridge: () =>
-      renderPlankBridge(bridgeStart.x, bridgeStart.y, BOSS_POS.x, BOSS_POS.y, { width: BOSS_BRIDGE_WIDTH }) +
-      `<circle cx="${BOSS_POS.x}" cy="${BOSS_POS.y}" r="118" fill="#2c211c" opacity="0.22" />`,
+      renderBossIslet(isletOuterCtrl) + bossBridges.map((b) => renderPlankBridge(b.ringEnd.x, b.ringEnd.y, b.isletEnd.x, b.isletEnd.y, { width: BOSS_BRIDGE_WIDTH })).join(""),
   });
 
   root.innerHTML = `
@@ -318,13 +381,16 @@ export function renderSatRwHub(root, navigate, subject) {
   // inner hole (a real annulus test, not a single polygon the way every
   // other hub's own buildShorelinePolygons-sampled shore is — an "inside
   // this AND outside that" check has no single polygon to sample off the
-  // DOM), plus a rectangular strip for the boss bridge, same
-  // "bridgePolygon alongside the real shore polygons" idea islandHub.js's
-  // own vocab/boss bridges use — a bridge itself isn't a sand-colored
-  // path, so without its own walkable strip the avatar would hit
-  // invisible sky the moment it stepped off the ring onto it.
-  const bridgeWalkablePoly = bridgePolygon(bridgeStart.x, bridgeStart.y, BOSS_POS.x, BOSS_POS.y, BOSS_BRIDGE_WIDTH / 2 - 6);
-  const isWalkable = (px, py) => (pointInPolygon(px, py, ringOuter) && !pointInPolygon(px, py, ringInner)) || pointInPolygon(px, py, bridgeWalkablePoly);
+  // DOM), OR on the boss's own islet, OR on one of the 4 bridges' own
+  // rectangular strips — same "bridgePolygon alongside the real shore
+  // polygons" idea islandHub.js's own vocab/boss bridges use, since a
+  // bridge itself isn't a sand-colored path and would otherwise leave the
+  // avatar stuck the moment it stepped off real land onto one.
+  const bridgeWalkablePolys = bossBridges.map((b) => bridgePolygon(b.ringEnd.x, b.ringEnd.y, b.isletEnd.x, b.isletEnd.y, BOSS_BRIDGE_WIDTH / 2 - 6));
+  const isWalkable = (px, py) =>
+    (pointInPolygon(px, py, ringOuter) && !pointInPolygon(px, py, ringInner)) ||
+    pointInPolygon(px, py, isletOuter) ||
+    bridgeWalkablePolys.some((poly) => pointInPolygon(px, py, poly));
 
   const stopMovement = wireMovement({
     avatarEl: root.querySelector("#hubAvatar"),
@@ -338,7 +404,7 @@ export function renderSatRwHub(root, navigate, subject) {
       y: RING_CENTER.y + Math.sin(SPAWN_ANGLE) * SPAWN_RADIUS,
     },
     targets: [
-      { x: BOSS_POS.x, y: BOSS_POS.y, radius: BOSS_TRIGGER_RADIUS, gate: () => allMastered, onArrive: () => goTo("bossQuiz", { subjectId: subject.id }) },
+      { x: RING_CENTER.x, y: RING_CENTER.y, radius: BOSS_TRIGGER_RADIUS, gate: () => allMastered, onArrive: () => goTo("bossQuiz", { subjectId: subject.id }) },
       ...layout.map((p) => ({
         x: p.x,
         y: p.y,
