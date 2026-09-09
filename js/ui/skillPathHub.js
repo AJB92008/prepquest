@@ -244,7 +244,28 @@
 // numbers instead; dropped after it read as visually confusing in the
 // actual game, since those numbers sat right on top of the game's own
 // "Lesson 1/2/3" markers, which render at that exact same stop
-// position — see expeditionRoute.js's own header comment.)
+// position — see expeditionRoute.js's own header comment.) Lexicon
+// Shoals' own Etymology Grove zone (its second zone, see satRwHub.js's
+// own ZONES) starts its own Root & Branch family — warm forest green,
+// bark brown, and a small wooden root-origin tag at every stop naming
+// the real language a word's own root traces back to (cycling through
+// Latin, Greek, Old English, French) — across its own five skills:
+// Context Clues gets a sapling flanked by two different context
+// blossoms, its own canopy color always matching exactly one of the
+// two, never the other, alternating which side is the real match;
+// Blueprint Reader gets a tree with its own dashed structural skeleton
+// left visible behind the finished canopy, the scaffold a shape is
+// actually built on top of; Author's Angle gets a tree leaning at its
+// own deliberate angle, its ground-shadow cast the same way and a
+// small wind-pennant naming the direction, alternating which way
+// stop to stop; Paired Passage Bridge gets two trees, one on each side
+// of the trail, their canopies reaching toward each other to form a
+// real bridge grown over it, the same "two things, always meeting in
+// the middle" idea Agreement Check's own twin sentries use; and Figure
+// It Out gets a topiary tree pruned into a shape that isn't a tree at
+// all — a spiral or a five-point star, alternating stop to stop — the
+// surface shape never being the literal thing, grown instead of
+// stated.
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
@@ -321,6 +342,11 @@ import { turningWatchTheme } from "./lessonThemes/turningWatch.js";
 import { tradeRoutesTheme } from "./lessonThemes/tradeRoutes.js";
 import { pinnedNotesTheme } from "./lessonThemes/pinnedNotes.js";
 import { expeditionRouteTheme } from "./lessonThemes/expeditionRoute.js";
+import { rootedMeaningTheme } from "./lessonThemes/rootedMeaning.js";
+import { branchBlueprintTheme } from "./lessonThemes/branchBlueprint.js";
+import { windwardBoughTheme } from "./lessonThemes/windwardBough.js";
+import { canopyBridgeTheme } from "./lessonThemes/canopyBridge.js";
+import { topiaryTwistTheme } from "./lessonThemes/topiaryTwist.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -394,6 +420,11 @@ export const LESSON_THEMES = {
   "satrw-transitions": tradeRoutesTheme,
   "satrw-rhetoricalsynth": pinnedNotesTheme,
   "satrw-organization": expeditionRouteTheme,
+  "satrw-wordsincontext": rootedMeaningTheme,
+  "satrw-textstructure": branchBlueprintTheme,
+  "satrw-purpose": windwardBoughTheme,
+  "satrw-crosstext": canopyBridgeTheme,
+  "satrw-figurative": topiaryTwistTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
