@@ -224,6 +224,22 @@
 // in order — dawn, midday, dusk, night — the same "step through a real
 // sequence" idea Time Order's own moon phases use, a tower keeping watch
 // across a whole day standing in for a verb changing across a timeline.
+// Lexicon Shoals' own Scriptorium zone (its third zone, see satRwHub.js's
+// own ZONES) starts its own Cartographer's Table family — aged
+// parchment, sepia ink, wax-seal red, and compass gold, the whole scene
+// read as a chart spread out and studied from directly above rather
+// than any sky or room, Scriptorium's own answer to Archive Stacks'
+// night violet and Grammar Garrison's open-air stone — across its own
+// three skills: Transition Tracker gets one inked trade route with a
+// small route-junction pennant at every stop, its own shape and color
+// naming which family of transition connects it to the next —
+// continuation, contrast, or cause and effect — cycling in order;
+// Bullet Point Builder gets 2-3 loose torn note-scraps bound by ribbon
+// into one sealed, wax-stamped note at every stop, several things
+// visibly becoming one; and Logical Order gets a real numbered waypoint
+// flag at every stop marking its own correct place in the one true
+// sequence, with the discarded wrong placement struck through just
+// beside it — a revision actually shown happening, not just implied.
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
@@ -297,6 +313,9 @@ import { rampartGatesTheme } from "./lessonThemes/rampartGates.js";
 import { pennantWatchTheme } from "./lessonThemes/pennantWatch.js";
 import { twinSentriesTheme } from "./lessonThemes/twinSentries.js";
 import { turningWatchTheme } from "./lessonThemes/turningWatch.js";
+import { tradeRoutesTheme } from "./lessonThemes/tradeRoutes.js";
+import { pinnedNotesTheme } from "./lessonThemes/pinnedNotes.js";
+import { expeditionRouteTheme } from "./lessonThemes/expeditionRoute.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -367,6 +386,9 @@ export const LESSON_THEMES = {
   "satrw-punctuation": pennantWatchTheme,
   "satrw-agreement": twinSentriesTheme,
   "satrw-verbforms": turningWatchTheme,
+  "satrw-transitions": tradeRoutesTheme,
+  "satrw-rhetoricalsynth": pinnedNotesTheme,
+  "satrw-organization": expeditionRouteTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
