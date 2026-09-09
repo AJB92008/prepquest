@@ -1001,7 +1001,15 @@ export function renderLobeIsland(zoneGroups, { ringCenter, ringRadius, lobeRadiu
 // renderLobeIsland's own doc comments). Each zone is its own angular
 // wedge of the loop, in `zones` order same as every other layout here,
 // so ZONES[i] still lines up with the same real reporting category no
-// matter which of these three a given hub actually uses.
+// matter which of these three a given hub actually uses. computeRingLayout
+// requires `zoneSizes` (an array of real per-zone item counts, same
+// length as `zones`, summing to `items.length`) for exactly this reason —
+// a plain even split by raw array position silently misassigns items
+// straddling a real group boundary into the wrong wedge whenever the
+// real groups aren't all the same size (computeCurveLayout/
+// computeLobeLayout below still split evenly by design: both of their
+// own callers' zones are deliberately plain index-order groupings, not
+// meant to line up with any real external category).
 const RING_N = 100;
 
 // This ring's own two boundaries at once (outer shore, inner hole) —
@@ -1054,9 +1062,28 @@ export function sampleClosedBlobPath(pts, samplesPerSegment = 6) {
   return out;
 }
 
-export function computeRingLayout(items, zones, { center, outerRadius, innerRadius, shoreRingWidth = 46 }) {
+export function computeRingLayout(items, zones, { center, outerRadius, innerRadius, shoreRingWidth = 46, zoneSizes }) {
   const n = zones.length;
-  const perZone = Math.ceil(items.length / n);
+  // zoneSizes lines up each wedge with a real external grouping of
+  // uneven sizes (e.g. satRwHub.js's own 4 SAT reporting categories,
+  // split 5/5/3/4) instead of just cutting `items` into n equal chunks
+  // by raw array position — equal chunking silently misassigns items
+  // straddling a real category boundary into the wrong zone whenever the
+  // real groups aren't all the same size. Must sum to items.length.
+  const starts = [];
+  {
+    let acc = 0;
+    for (let z = 0; z < n; z++) {
+      starts.push(acc);
+      acc += zoneSizes[z];
+    }
+  }
+  function zoneIndexForItem(i) {
+    for (let z = n - 1; z >= 0; z--) {
+      if (i >= starts[z]) return z;
+    }
+    return 0;
+  }
   // Markers stay well inside both the outer shore's own sand rim and the
   // inner hole's own sand rim, never right at either edge — same
   // "don't crowd the actual coastline" reasoning computeCurveLayout's own
@@ -1069,10 +1096,10 @@ export function computeRingLayout(items, zones, { center, outerRadius, innerRadi
   const bandHalf = (bandHi - bandLo) / 2;
 
   return items.map((item, i) => {
-    const zoneIndex = Math.min(Math.floor(i / perZone), n - 1);
+    const zoneIndex = zoneIndexForItem(i);
     const zone = zones[zoneIndex];
-    const indexInZone = i - zoneIndex * perZone;
-    const itemsInZone = Math.min(perZone, items.length - zoneIndex * perZone);
+    const indexInZone = i - starts[zoneIndex];
+    const itemsInZone = zoneSizes[zoneIndex];
     const wedgeLo = (zoneIndex / n) * Math.PI * 2;
     const wedgeHi = ((zoneIndex + 1) / n) * Math.PI * 2;
     const inset = (wedgeHi - wedgeLo) * 0.16;

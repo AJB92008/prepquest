@@ -58,12 +58,12 @@ import {
 // SHORE_RING_WIDTH-aware inset keeps every skill marker on real land
 // regardless of that same jitter — see this file's own render call and
 // that function's doc comment in hubWorld.js.
-const RING_CENTER = { x: 1100, y: 780 };
-const OUTER_RADIUS = 520;
-const INNER_RADIUS = 230;
-const SHORE_RING_WIDTH = 46;
-const RING_JITTER = 0.1;
-const RING_SEED = 3;
+export const RING_CENTER = { x: 1100, y: 780 };
+export const OUTER_RADIUS = 520;
+export const INNER_RADIUS = 230;
+export const SHORE_RING_WIDTH = 46;
+export const RING_JITTER = 0.1;
+export const RING_SEED = 3;
 const BOSS_BRIDGE_WIDTH = 68;
 
 // The boss's own islet, floating dead center in the ring's own hollow
@@ -95,18 +95,26 @@ let goatClickTimestamps = [];
 // markers on this ring at least ~127px apart at these exact
 // RING_CENTER/OUTER_RADIUS/INNER_RADIUS/SHORE_RING_WIDTH values (checked
 // by hand against the real 17-skill sat-rw array, not just eyeballed —
-// change any of those four and re-check), comfortably past two 50px
-// hitboxes' own 2*50=100 overlap threshold.
-const SKILL_TRIGGER_RADIUS = 50;
+// change any of those four *or* how the 17 skills distribute across the
+// 4 zones, e.g. via reportingCategoryGroupSizes below, and re-check:
+// a wedge with more items packed into it has less angular room per
+// item), comfortably past two 50px hitboxes' own 2*50=100 overlap
+// threshold.
+export const SKILL_TRIGGER_RADIUS = 50;
 
 // Four wedges around the ring, in the same order as SAT_SUBJECTS' own
 // sat-rw skill array (Information and Ideas, Craft and Structure,
 // Expression of Ideas, Standard English Conventions — see
-// REPORTING_CATEGORIES["sat-rw"] in data/satSkills.js) — computeRingLayout
-// slices the skills array sequentially across ZONES in array order, same
-// as computeCurveLayout does for islandHub.js's own 4 zones, so keeping
-// that order here means each wedge lines up with its own real reporting
-// category the same way.
+// REPORTING_CATEGORIES["sat-rw"] in data/satSkills.js) — reportingCategoryGroupSizes
+// below derives each category's own real size (5/5/3/4) straight from
+// subject.skills itself, and renderSatRwHub passes that as
+// computeRingLayout's `zoneSizes` so each wedge actually contains that
+// category's own skills, not just an even quarter of the total 17 by
+// raw array position (the two can diverge — an earlier version of this
+// file assumed equal quartering was good enough and was wrong: the
+// Scriptorium wedge silently picked up Sentence Boundaries and
+// Punctuation Precision, which really belong to Grammar Garrison,
+// leaving Garrison with only 2 of its own 4 skills).
 // `description` is what the legend shows for each zone — a plain
 // description of what it covers, not the official College Board category
 // name, matching islandHub.js's own reasoning for its own zones.
@@ -121,12 +129,33 @@ const SKILL_TRIGGER_RADIUS = 50;
 // desaturated pastels) rather than the lesson scenes' own much darker
 // background tones, so it reads as "this zone's own hue" without
 // looking like a heavy dark patch dropped into an otherwise pastel ring.
-const ZONES = [
+export const ZONES = [
   { id: "stacks", name: "Archive Stacks", fill: "#a99bd8", description: "Main ideas & evidence", decorations: [] },
   { id: "grove", name: "Etymology Grove", fill: "#8fbf7a", description: "Word choice & structure", decorations: [] },
   { id: "scriptorium", name: "Scriptorium", fill: "#8fb8d9", description: "Organizing your writing", decorations: [] },
   { id: "garrison", name: "Grammar Garrison", fill: "#9aa3ad", description: "Grammar & sentence rules", decorations: [] },
 ];
+
+// subject.skills is already grouped by reportingCategory in one
+// consecutive run per category (see data/satSkills.js) — this counts
+// each run's own real length (5/5/3/4) in array order, giving
+// computeRingLayout's `zoneSizes` the actual category boundaries
+// instead of an even quarter of the total. Reads the grouping straight
+// off the data every time rather than hardcoding [5, 5, 3, 4], so it
+// keeps matching automatically if a skill is ever added to or removed
+// from one of the 4 categories.
+export function reportingCategoryGroupSizes(skills) {
+  const sizes = [];
+  let runCategory = null;
+  for (const skill of skills) {
+    if (skill.reportingCategory !== runCategory) {
+      sizes.push(0);
+      runCategory = skill.reportingCategory;
+    }
+    sizes[sizes.length - 1]++;
+  }
+  return sizes;
+}
 
 function renderLegend() {
   return `
@@ -150,7 +179,7 @@ function renderLegend() {
 // Grammar Garrison's own goat is the dev-mode unlock: 10 clicks within
 // 5s, same mechanic islandHub.js's own goat uses — sits at
 // decorationPos' own spot #0 off that zone's center.
-function computeGoatPos(layout) {
+export function computeGoatPos(layout) {
   const garrison = ZONES.find((z) => z.id === "garrison");
   const points = layout.filter((p) => p.zone === garrison);
   if (!points.length) return null;
@@ -262,6 +291,7 @@ export function renderSatRwHub(root, navigate, subject) {
     outerRadius: OUTER_RADIUS,
     innerRadius: INNER_RADIUS,
     shoreRingWidth: SHORE_RING_WIDTH,
+    zoneSizes: reportingCategoryGroupSizes(subject.skills),
   });
   const goatPos = computeGoatPos(layout);
 
