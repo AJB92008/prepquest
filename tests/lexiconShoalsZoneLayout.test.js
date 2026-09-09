@@ -11,7 +11,7 @@
 // (reportingCategoryGroupSizes) and pass it to computeRingLayout as
 // `zoneSizes`, so a zone's own item count is never assumed.
 import { SAT_SUBJECTS, REPORTING_CATEGORIES } from "../js/data/satSkills.js";
-import { computeRingLayout, ringBoundaryPoints, sampleClosedBlobPath } from "../js/ui/hubWorld.js";
+import { computeRingLayout, ringBoundaryPoints, sampleClosedBlobPath, zoneCenter, decorationPos } from "../js/ui/hubWorld.js";
 import {
   ZONES,
   reportingCategoryGroupSizes,
@@ -125,5 +125,51 @@ test("Grammar Garrison's own dev-mode goat still lands on real walkable land, cl
   layout.forEach((p) => {
     const dist = Math.hypot(p.x - goat.x, p.y - goat.y);
     assertTrue(dist > SKILL_TRIGGER_RADIUS, `expected the goat to stay clear of "${p.item.id}"'s own hitbox, got ${dist.toFixed(1)}px`);
+  });
+});
+
+// decorationPos spirals a zone's own decorations outward by raw array
+// index, not by how many *real* (non-empty) emoji come before it — so
+// whether a given index lands clear of a marker depends on that zone's
+// own real skill layout, not on anything about the emoji itself. Found
+// by hand for Archive Stacks: its own original 3-entry decorations
+// array put index 1 close enough to Detail Sorter's own marker to
+// really overlap it in the rendered DOM (confirmed via
+// getBoundingClientRect, not just estimated distance) — fixed by
+// burning that index with an empty-string spacer (see Archive Stacks'
+// own comment in satRwHub.js) rather than assuming any 3-entry array is
+// automatically safe. This generalizes that same check to every zone's
+// own real (non-empty) decorations, against every marker in that zone
+// and the goat, so the next zone to get its own decorations array
+// can't quietly ship the same collision.
+test("every zone's own real decorations land on real walkable land, clear of every skill marker's own hitbox and the goat", () => {
+  const layout = realLayout();
+  const { outer, inner } = ringBoundaryPoints({ center: RING_CENTER, outerRadius: OUTER_RADIUS, innerRadius: INNER_RADIUS, seed: RING_SEED, jitter: RING_JITTER });
+  const outerCurve = sampleClosedBlobPath(outer);
+  const innerCurve = sampleClosedBlobPath(inner);
+  const goat = computeGoatPos(layout);
+
+  ZONES.forEach((zone) => {
+    const points = layout.filter((p) => p.zone === zone);
+    if (!points.length) return;
+    const { avgX, avgY } = zoneCenter(points);
+    zone.decorations.forEach((emoji, i) => {
+      if (!emoji) return; // a deliberate empty-string spacer slot — nothing renders there, nothing to check
+      const pos = decorationPos(avgX, avgY, i, zone.decorations.length);
+      assertTrue(pointInPolygon(pos, outerCurve) && !pointInPolygon(pos, innerCurve), `expected "${zone.id}"'s own "${emoji}" decoration to land on real land, inside the outer shore and outside the inner hole`);
+      // Checked against every one of the 17 real markers, not just this
+      // zone's own — decorationPos throws a decoration 130-210px out
+      // from its own zone's centroid, and each wedge only spans 90° of
+      // the ring, so a decoration landing close to a *neighboring*
+      // zone's marker is real, plausible geometry, not a hypothetical.
+      layout.forEach((p) => {
+        const dist = Math.hypot(p.x - pos.x, p.y - pos.y);
+        assertTrue(dist > SKILL_TRIGGER_RADIUS, `expected "${zone.id}"'s own "${emoji}" decoration to stay clear of "${p.item.id}"'s own hitbox, got ${dist.toFixed(1)}px`);
+      });
+      if (goat) {
+        const goatDist = Math.hypot(goat.x - pos.x, goat.y - pos.y);
+        assertTrue(goatDist > SKILL_TRIGGER_RADIUS, `expected "${zone.id}"'s own "${emoji}" decoration to stay clear of the goat, got ${goatDist.toFixed(1)}px`);
+      }
+    });
   });
 });

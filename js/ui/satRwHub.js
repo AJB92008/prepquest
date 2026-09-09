@@ -118,22 +118,61 @@ export const SKILL_TRIGGER_RADIUS = 50;
 // `description` is what the legend shows for each zone — a plain
 // description of what it covers, not the official College Board category
 // name, matching islandHub.js's own reasoning for its own zones.
-// Archive Stacks' own fill is a soft twilight violet, not the plain
-// khaki every other zone here still uses — it's the one zone whose
-// actual lesson-path scenes (see lessonThemes/celestialCodex.js and its
-// four siblings) all share a specific "Celestial Archive" palette, a
-// violet night sky lit by warm gold starlight, so the wedge itself reads
-// as a piece of that same sky rather than clashing with what a player
-// actually sees once they walk in. Kept at roughly the same lightness/
-// saturation as its 3 sibling wedges below (all light, fairly
-// desaturated pastels) rather than the lesson scenes' own much darker
-// background tones, so it reads as "this zone's own hue" without
-// looking like a heavy dark patch dropped into an otherwise pastel ring.
+// Every wedge's own fill now matches its own lesson-path themes' real
+// palette (see js/ui/lessonThemes/), all kept at roughly the same
+// lightness/saturation as each other (light, fairly desaturated
+// pastels) rather than the lesson scenes' own much darker or richer
+// background tones, so each reads as "this zone's own hue" without any
+// one wedge looking like a heavy patch dropped into an otherwise
+// pastel ring. Archive Stacks was the first to get this treatment (a
+// soft twilight violet matching Celestial Archive's own violet night
+// sky); Scriptorium's own fill was recolored the same way later, from
+// a plain sky blue that actively clashed with Cartographer's Table's
+// real palette (aged parchment and ink, no sky or water in it at all)
+// to a warm parchment gold instead. Etymology Grove's and Grammar
+// Garrison's own fills already landed close to their real themes'
+// palettes (Root & Branch's forest green, Sky Bastion's own weathered
+// stone) without needing a change.
+//
+// `decorations` places a few small fixed emoji around each zone's own
+// center (see renderWorldSvg's own decorations pass in hubWorld.js) —
+// themed to match each zone's real lesson-path identity now that every
+// zone has one. hubWorld.js's own decorationPos spirals outward by raw
+// array index (not by how many *real*, non-empty emoji come before it):
+// both the angle AND the radius of a given index depend on the array's
+// own full length (`total`), so every zone here was checked emoji-by-
+// emoji, at its own real array length, against every one of the ring's
+// own 17 real skill markers (not just that zone's own), every zone's
+// own real land (inside the outer shore, outside the inner hole), and,
+// for Grammar Garrison, the dev-mode goat too (see computeGoatPos
+// below). An empty string "" at any index is a deliberate spacer, not
+// a mistake — it renders an empty, invisible <text> and burns that
+// index's own position instead of a real emoji landing there.
+//
+// Archive Stacks' own "" entries (indices 1 and 3) each burn a position
+// too close to a real marker — confirmed via getBoundingClientRect, not
+// just estimated distance. Grammar Garrison needed three: its leading
+// "" (index 0) burns the one position that always collides with the
+// goat by construction (index 0 resolves to the same offset regardless
+// of `total`, the same offset computeGoatPos itself uses for this
+// zone); its middle "" (index 2) burns a position too close to a real
+// marker, same reason as Archive Stacks'; and its OWN trailing "" (the
+// 6th, last entry) is load-bearing in a different way — not because
+// that exact position collides with anything, but because it keeps the
+// array's own length at 6, and indices 1/3/4 were only checked safe
+// *at length 6*. This was verified the hard way: a 5-long version of
+// this same array (dropping just the trailing "") moves ☁️'s own
+// position from (1313, 353) to (1539, 398) — off the ring entirely,
+// outside its own outer shore. Changing how many entries this array
+// holds moves every remaining index's own angle and radius together;
+// re-check against every marker, real land, and the goat again before
+// trusting a different length, the same way tests/lexiconShoalsZoneLayout
+// .test.js's own decoration test already does automatically.
 export const ZONES = [
-  { id: "stacks", name: "Archive Stacks", fill: "#a99bd8", description: "Main ideas & evidence", decorations: [] },
-  { id: "grove", name: "Etymology Grove", fill: "#8fbf7a", description: "Word choice & structure", decorations: [] },
-  { id: "scriptorium", name: "Scriptorium", fill: "#8fb8d9", description: "Organizing your writing", decorations: [] },
-  { id: "garrison", name: "Grammar Garrison", fill: "#9aa3ad", description: "Grammar & sentence rules", decorations: [] },
+  { id: "stacks", name: "Archive Stacks", fill: "#a99bd8", description: "Main ideas & evidence", decorations: ["📜", "", "⭐", "", "🕯️"] },
+  { id: "grove", name: "Etymology Grove", fill: "#8fbf7a", description: "Word choice & structure", decorations: ["🌳", "🍃", "🪵"] },
+  { id: "scriptorium", name: "Scriptorium", fill: "#d9be85", description: "Organizing your writing", decorations: ["🗺️", "🧭", "✒️"] },
+  { id: "garrison", name: "Grammar Garrison", fill: "#9aa3ad", description: "Grammar & sentence rules", decorations: ["", "🏰", "", "🚩", "☁️", ""] },
 ];
 
 // subject.skills is already grouped by reportingCategory in one
