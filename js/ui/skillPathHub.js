@@ -205,7 +205,26 @@
 // zone's own deliberate opposite of Core Idea Finder's single codex — a
 // dense drift of small index cards, mini scrolls, and wax seals that
 // reads visibly messier near the top and settles into calmer rows by
-// the time it reaches the boss. Add a
+// the time it reaches the boss. Lexicon Shoals' own Grammar Garrison
+// zone (its fourth and last zone, see satRwHub.js's own ZONES) starts
+// its own Sky Bastion family — open daytime sky (deliberately not
+// Archive Stacks' own night violet, a different zone with its own time
+// of day), weathered stone, and crimson banners — across its own four
+// skills: Sentence Boundaries gets one continuous rampart running the
+// whole scene, solid everywhere except a real gate with its own banner
+// at every stop — a fragment or a run-on both reading as wrong the same
+// way an unbroken or randomly-crumbled wall would; Punctuation Precision
+// gets a row of watch-posts, each flying a different punctuation mark's
+// own glyph stitched onto its banner — comma, semicolon, colon, dash —
+// cycling in order; Agreement Check gets two sentry turrets at every
+// stop, always built identical to each other in height and banner
+// color, the same "paired, always matching" idea Athenaeum Reef's own
+// Side by Side/twinPonds/twinTidepools already use; and Verb Form Fix
+// gets a watchtower beacon stepping through the four real times of day
+// in order — dawn, midday, dusk, night — the same "step through a real
+// sequence" idea Time Order's own moon phases use, a tower keeping watch
+// across a whole day standing in for a verb changing across a timeline.
+// Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
 // engine.
@@ -274,6 +293,10 @@ import { lanternFoliosTheme } from "./lessonThemes/lanternFolios.js";
 import { starChartGalleryTheme } from "./lessonThemes/starChartGallery.js";
 import { umbralArchiveTheme } from "./lessonThemes/umbralArchive.js";
 import { catalogDriftTheme } from "./lessonThemes/catalogDrift.js";
+import { rampartGatesTheme } from "./lessonThemes/rampartGates.js";
+import { pennantWatchTheme } from "./lessonThemes/pennantWatch.js";
+import { twinSentriesTheme } from "./lessonThemes/twinSentries.js";
+import { turningWatchTheme } from "./lessonThemes/turningWatch.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -340,6 +363,10 @@ export const LESSON_THEMES = {
   "satrw-evidence-data": starChartGalleryTheme,
   "satrw-inference": umbralArchiveTheme,
   "satrw-detailsort": catalogDriftTheme,
+  "satrw-boundaries": rampartGatesTheme,
+  "satrw-punctuation": pennantWatchTheme,
+  "satrw-agreement": twinSentriesTheme,
+  "satrw-verbforms": turningWatchTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
