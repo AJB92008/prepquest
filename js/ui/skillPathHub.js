@@ -236,10 +236,15 @@
 // continuation, contrast, or cause and effect — cycling in order;
 // Bullet Point Builder gets 2-3 loose torn note-scraps bound by ribbon
 // into one sealed, wax-stamped note at every stop, several things
-// visibly becoming one; and Logical Order gets a real numbered waypoint
-// flag at every stop marking its own correct place in the one true
-// sequence, with the discarded wrong placement struck through just
-// beside it — a revision actually shown happening, not just implied.
+// visibly becoming one; and Logical Order gets a small brass waypoint
+// tile turning square with the chart at every stop, a fainter crooked
+// tile behind it showing the wrong placement it was corrected from — a
+// revision actually shown happening, not just implied. (An earlier
+// version of Logical Order spelled this out with literal sequence
+// numbers instead; dropped after it read as visually confusing in the
+// actual game, since those numbers sat right on top of the game's own
+// "Lesson 1/2/3" markers, which render at that exact same stop
+// position — see expeditionRoute.js's own header comment.)
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared

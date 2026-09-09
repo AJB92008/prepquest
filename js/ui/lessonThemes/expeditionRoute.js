@@ -3,12 +3,18 @@
 // theme renders through, and tradeRoutes.js for this zone's own shared
 // Cartographer's Table palette). Logical Order is about revising a
 // sentence or paragraph's own order for the clearest logic, so every
-// stop on this chart carries its own real waypoint number, in the one
-// correct sequence — 1, 2, 3, all the way to the last stop before the
-// champion's own destination — plus one smaller, fainter, struck-
-// through "wrong" number floating just beside it: the discarded
-// placement being corrected, not just a flag marking a place, the
-// correction itself shown happening at every single stop.
+// stop on this chart shows a small brass waypoint tile turning into its
+// own correct alignment: a faded, crooked "wrong" tile behind it, a
+// curved arrow sweeping from that crooked angle to the real tile
+// sitting square with the route — the correction itself shown
+// happening, not implied. An earlier version of this file spelled the
+// same idea out with literal sequence numbers (a real "1, 2, 3…" flag
+// plus a struck-through "wrong" number beside it) — dropped after it
+// read as visually confusing in the actual game: those numbers sat
+// right where the game's own "Lesson 1/2/3" markers already are, so the
+// scene carried two competing numbering systems in the same spot,
+// louder than the graph. Turning geometry names the same "wrong,
+// corrected" idea without ever touching a digit.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -26,6 +32,9 @@ function defs() {
         <stop offset="0%" stop-color="${PARCHMENT_TOP}" />
         <stop offset="100%" stop-color="${PARCHMENT_BOTTOM}" />
       </linearGradient>
+      <marker id="expeditionRouteArrow" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="${INK_FAINT}" opacity="0.8" />
+      </marker>
     </defs>
   `;
 }
@@ -61,51 +70,66 @@ function renderAgeSpots(totalHeight) {
     .join("");
 }
 
-// One compass rose at the very first stop, marking the expedition's own
-// start the way an old chart marks its own point of departure.
-function renderStartCompass(x, y) {
+// One small square waypoint tile with a single arrow-notch on its own
+// "forward" edge — drawn upright (angle 0), the notch points straight
+// down. `rotate(deg, x, y)` is what turns it crooked for the ghost copy
+// below; the real copy always renders at literal angle 0, so "square
+// with the chart" and "correct" are the same fact, not two facts a
+// reader has to reconcile.
+function renderTile(x, y, deg, { size, fill, stroke, opacity }) {
+  const half = size / 2;
+  const notch = size * 0.28;
   return `
-    <circle cx="${x}" cy="${(y - 46).toFixed(1)}" r="20" fill="none" stroke="${INK}" stroke-width="1.6" opacity="0.7" />
-    <path d="M${x},${(y - 64).toFixed(1)} L${x},${(y - 28).toFixed(1)} M${(x - 18).toFixed(1)},${(y - 46).toFixed(1)} L${(x + 18).toFixed(1)},${(y - 46).toFixed(1)}" stroke="${INK}" stroke-width="1.2" opacity="0.7" />
-    <circle cx="${x}" cy="${(y - 46).toFixed(1)}" r="3" fill="${GOLD_TRIM}" />
+    <g transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${deg})" opacity="${opacity}">
+      <rect x="${(-half).toFixed(1)}" y="${(-half).toFixed(1)}" width="${size}" height="${size}" fill="${fill}" stroke="${stroke}" stroke-width="1.6" />
+      <path d="M${(-notch / 2).toFixed(1)},${half.toFixed(1)} L0,${(half + notch).toFixed(1)} L${(notch / 2).toFixed(1)},${half.toFixed(1)} Z" fill="${stroke}" />
+    </g>
   `;
 }
 
-// The real numbered waypoint flag at this stop — the actual correct
-// position in sequence, in solid ink on a small gold-trimmed pennant.
-function renderRealFlag(x, y, number) {
-  const top = y - 40;
-  return `
-    <line x1="${x}" y1="${y}" x2="${x}" y2="${top.toFixed(1)}" stroke="${INK}" stroke-width="2.4" />
-    <path d="M${x},${top.toFixed(1)} L${(x + 28).toFixed(1)},${(top + 8).toFixed(1)} L${x},${(top + 16).toFixed(1)} Z" fill="#f4e8c8" stroke="${GOLD_TRIM}" stroke-width="1.6" />
-    <text x="${(x + 11).toFixed(1)}" y="${(top + 12).toFixed(1)}" font-size="11" font-weight="700" fill="${INK}" text-anchor="middle">${number}</text>
-  `;
+// The curved turn itself — a dashed arc sweeping from the ghost tile's
+// own position toward the real tile's, capped with an arrowhead so the
+// motion reads as "became this," not just "near this." Pulled back
+// `pullback` short of the real tile's own exact center rather than
+// ending there: the actual clickable lesson-marker button (see
+// renderLessonMarker in lessonTerrain.js) renders on top of this SVG at
+// that same point — its circle alone is 23px in radius at desktop,
+// 20px under the mobile breakpoint, plus a "Lesson N" label extending
+// further below that — and an arrowhead landing under any of it would
+// be invisible. 30px clears the circle at both sizes; if a later edit
+// ever shrinks `pullback` back down, re-check against those two radii,
+// not just eyeball it.
+function renderTurnArc(fromX, fromY, toX, toY, bow, pullback = 30) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const dist = Math.hypot(dx, dy) || 1;
+  const endX = toX - (dx / dist) * pullback;
+  const endY = toY - (dy / dist) * pullback;
+  const mx = (fromX + endX) / 2 + bow;
+  const my = (fromY + endY) / 2 - Math.abs(bow) * 0.4;
+  return `<path d="M${fromX.toFixed(1)},${fromY.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}" stroke="${INK_FAINT}" stroke-width="1.6" fill="none" stroke-dasharray="3 4" opacity="0.6" marker-end="url(#expeditionRouteArrow)" />`;
 }
 
-// The discarded "wrong" placement floating just beside the real flag —
-// fainter, smaller, struck through — a revision actually shown, not
-// just implied. Deterministic and always different from the real
-// number: no shuffling or lookup table to keep in sync, just the next
-// stop's own eventual number, arriving one stop too early.
-function renderGhostNumber(x, y, ghostNumber) {
-  const gx = x - 30;
-  const gy = y + 6;
-  return `
-    <text x="${gx.toFixed(1)}" y="${gy.toFixed(1)}" font-size="13" fill="${WAX_RED}" opacity="0.55" text-anchor="middle">${ghostNumber}</text>
-    <line x1="${(gx - 7).toFixed(1)}" y1="${(gy - 4).toFixed(1)}" x2="${(gx + 7).toFixed(1)}" y2="${(gy + 3).toFixed(1)}" stroke="${WAX_RED}" stroke-width="1.4" opacity="0.6" />
-  `;
+// Ghost angle and offset side alternate stop to stop purely for visual
+// variety — plain alternation, not a shared seed with anything else
+// this file skips or selects, so there's no catalogDrift-style
+// correlation risk here.
+function renderTurningWaypoint(p, i) {
+  const sign = i % 2 === 0 ? -1 : 1;
+  const ghostDeg = sign * 36;
+  const ghostX = p.x + sign * -30;
+  const ghostY = p.y - 22;
+  const ghost = renderTile(ghostX, ghostY, ghostDeg, { size: 18, fill: "#e8cfa0", stroke: WAX_RED, opacity: 0.55 });
+  const arc = renderTurnArc(ghostX, ghostY, p.x, p.y, sign * -18);
+  const real = renderTile(p.x, p.y, 0, { size: 24, fill: "#f4e8c8", stroke: GOLD_TRIM, opacity: 1 });
+  return ghost + arc + real;
 }
 
 function renderWaypoints(positions) {
   const bossIndex = positions.length - 1;
-  const stops = positions.filter((_, i) => i !== bossIndex);
-  return stops
-    .map((p, i) => {
-      const real = i + 1;
-      const ghost = i + 2;
-      const start = i === 0 ? renderStartCompass(p.x, p.y) : "";
-      return start + renderGhostNumber(p.x, p.y, ghost) + renderRealFlag(p.x, p.y, real);
-    })
+  return positions
+    .filter((_, i) => i !== bossIndex)
+    .map((p, i) => renderTurningWaypoint(p, i))
     .join("");
 }
 
@@ -119,7 +143,7 @@ function renderScene(positions, totalHeight, bossName) {
 
   return `
     <svg viewBox="0 0 ${COL_W} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" class="lesson-terrain-svg" role="img"
-      aria-label="A corner of Lexicon Shoals' Scriptorium, spread out as a cartographer's chart: a numbered waypoint flag at every stop marking its own correct place in sequence, with the discarded wrong placement struck through just beside it, connecting every Logical Order lesson up to ${bossName}'s own marked destination">
+      aria-label="A corner of Lexicon Shoals' Scriptorium, spread out as a cartographer's chart: a small brass waypoint tile turning square with the route at every stop, a faded crooked tile behind it showing the wrong placement it was corrected from, connecting every Logical Order lesson up to ${bossName}'s own marked destination">
       ${defs()}
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="url(#expeditionRouteParchment)" />
       <g>${renderAgeSpots(totalHeight)}</g>

@@ -103,21 +103,22 @@ test("no Scriptorium theme places a real decorative feature on top of the boss/c
   });
 });
 
-// Logical Order's own real waypoint number and its discarded "ghost"
-// number are both just `i + 1`/`i + 2` — never derived from any shared
-// skip/selection seed the way catalogDrift.js's own pieces once were —
-// but they must still always differ, at every position, or the "here's
-// the correction" idea collapses into two identical numbers side by
-// side. Real algebra, not modulus-based, so this isn't the same bug
-// class; still worth locking down given it's the one Scriptorium theme
-// that depends on two derived values staying different from each other.
-// Rendering order per stop is always [ghost, real] (see
-// expeditionRoute.js's own renderWaypoints), so the flat <text> list
-// pairs up the same way; count 1 is its own edge case — the single
-// position *is* the boss, so there's no stop before it and no text at
+// expeditionRoute.js was redesigned after the user found its original
+// literal sequence-number version visually confusing in the actual
+// game: those numbers sat right where the game's own "Lesson 1/2/3"
+// markers (renderLessonMarker in lessonTerrain.js) already render, at
+// the exact same (x, y) as each stop — two numbering systems competing
+// for the same spot. The redesign drops every digit in favor of a
+// small waypoint tile turning square with the route, with a fainter,
+// crooked "wrong" tile behind it (see renderTurningWaypoint). This
+// locks down the shape of that replacement: exactly one real tile
+// (rotate(0), literally square with the route) and one ghost tile
+// (rotate(deg) with deg !== 0) per stop, and confirms no <text> element
+// leaked back in. Count 1 is its own edge case — the single position
+// *is* the boss, so there's no stop before it and nothing rendered at
 // all, same as every other Scriptorium/Grammar Garrison theme's own
 // boss-excluding filter.
-test("expeditionRouteTheme's real waypoint number and its discarded ghost number always differ, at every lesson count", () => {
+test("expeditionRouteTheme replaced its old sequence numbers with exactly one real (square) tile and one ghost (crooked) tile per stop", () => {
   const theme = LESSON_THEMES["satrw-organization"];
   [2, 5, 20, 28].forEach((count) => {
     const positions = computeTrail(count, theme.trailBand);
@@ -125,18 +126,21 @@ test("expeditionRouteTheme's real waypoint number and its discarded ghost number
     const svgString = theme.renderScene(positions, totalHeight, "The Chief Archivist");
     const root = document.createElement("div");
     root.innerHTML = svgString;
-    const texts = [...root.querySelectorAll("text")].map((t) => t.textContent);
+    assertEqual(root.querySelectorAll("text").length, 0, `expected no leftover <text> waypoint numbers at lesson count ${count}`);
+
+    const tileGroups = [...root.querySelectorAll("g[transform]")].filter((g) => /rotate\(/.test(g.getAttribute("transform")));
     const expectedStops = count - 1;
-    assertEqual(texts.length, expectedStops * 2, `expected one ghost + one real number per stop at lesson count ${count}`);
-    for (let i = 0; i < texts.length; i += 2) {
-      const ghost = Number(texts[i]);
-      const real = Number(texts[i + 1]);
-      assertEqual(ghost, real + 1, `expected the ghost number to be exactly one past the real number at stop ${i / 2}, lesson count ${count}`);
-    }
+    assertEqual(tileGroups.length, expectedStops * 2, `expected one ghost + one real tile per stop at lesson count ${count}`);
+
+    const degrees = tileGroups.map((g) => Number(g.getAttribute("transform").match(/rotate\(([-\d.]+)\)/)[1]));
+    const squareTiles = degrees.filter((d) => d === 0);
+    const crookedTiles = degrees.filter((d) => d !== 0);
+    assertEqual(squareTiles.length, expectedStops, `expected exactly one square (rotate(0)) real tile per stop at lesson count ${count}`);
+    assertEqual(crookedTiles.length, expectedStops, `expected exactly one crooked (rotate !== 0) ghost tile per stop at lesson count ${count}`);
   });
   const positions = computeTrail(1, theme.trailBand);
   const svgString = theme.renderScene(positions, totalHeightFor(1), "The Chief Archivist");
   const root = document.createElement("div");
   root.innerHTML = svgString;
-  assertEqual(root.querySelectorAll("text").length, 0, "expected no waypoint numbers at lesson count 1, since the single position is the boss itself");
+  assertEqual(root.querySelectorAll("g[transform]").length, 0, "expected no waypoint tiles at lesson count 1, since the single position is the boss itself");
 });
