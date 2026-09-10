@@ -265,7 +265,36 @@
 // It Out gets a topiary tree pruned into a shape that isn't a tree at
 // all — a spiral or a five-point star, alternating stop to stop — the
 // surface shape never being the literal thing, grown instead of
-// stated.
+// stated. Function Fields' own Slope Fields zone (its first zone, see
+// satMathHub.js's own ZONES) starts its own "Graph Paper" family — pale
+// grid-ruled paper and one dark ink blue pulled straight from the hub's
+// own fill for this zone, continuing the hub's own graph/grid visual
+// language down into its lessons rather than switching to an unrelated
+// look — across its own five skills: Equation Solver gets a balance
+// scale at every stop holding an x tile and a numeral tile in perfect
+// balance, alternating which pan holds x; Line Reader gets a plotted
+// line segment with its own real rise/run triangle drawn in beside it,
+// alternating a rising line and a falling one; Graph Plotter gets two
+// real plotted points on the same line the lesson marker itself already
+// sits on (a third dot drawn directly under that marker never actually
+// showed), the newer one ringed as just placed, rather than one
+// finished line with nothing showing how it got there;
+// Crossing Point gets two lines in two different inks, each built as a
+// mirror pair of offsets around the same center point so they
+// genuinely intersect exactly there — the same "solved algebraically,
+// not guessed" standard Numeria Peaks' own Curve Ball already holds its
+// own parabola intersections to; and Boundary Setter gets a real
+// boundary line with its own solution half-plane shaded to one side,
+// alternating a solid boundary and a dashed one and which side is
+// shaded. Every one of Slope Fields' five files keeps its own real
+// content clear of (or, for a thin line/stroke, comfortably accepts
+// passing through) the game's own "Lesson N" marker button — at a
+// realistic mobile width that marker's own radius runs to ≈38 local
+// units, not the few pixels it measures in this project's own oversized
+// automation viewport, which is what let a real overlap on Equation
+// Solver's own fulcrum (and an uselessly small intersection ring on
+// Crossing Point, since removed) both ship looking fine in a
+// standalone check before being caught against the real in-game render.
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared
@@ -347,6 +376,11 @@ import { branchBlueprintTheme } from "./lessonThemes/branchBlueprint.js";
 import { windwardBoughTheme } from "./lessonThemes/windwardBough.js";
 import { canopyBridgeTheme } from "./lessonThemes/canopyBridge.js";
 import { topiaryTwistTheme } from "./lessonThemes/topiaryTwist.js";
+import { equationScaleTheme } from "./lessonThemes/equationScale.js";
+import { slopeTriangleTheme } from "./lessonThemes/slopeTriangle.js";
+import { plottedLineTheme } from "./lessonThemes/plottedLine.js";
+import { crossingLinesTheme } from "./lessonThemes/crossingLines.js";
+import { boundaryLineTheme } from "./lessonThemes/boundaryLine.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -425,6 +459,11 @@ export const LESSON_THEMES = {
   "satrw-purpose": windwardBoughTheme,
   "satrw-crosstext": canopyBridgeTheme,
   "satrw-figurative": topiaryTwistTheme,
+  "satmath-linear1var": equationScaleTheme,
+  "satmath-linearfunc": slopeTriangleTheme,
+  "satmath-linear2var": plottedLineTheme,
+  "satmath-systems": crossingLinesTheme,
+  "satmath-linineq": boundaryLineTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
