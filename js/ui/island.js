@@ -15,6 +15,7 @@ import { renderMathHub } from "./mathHub.js";
 import { renderReadingHub } from "./readingHub.js";
 import { renderScienceHub } from "./scienceHub.js";
 import { renderSatRwHub } from "./satRwHub.js";
+import { renderSatMathHub } from "./satMathHub.js";
 
 const ROW_HEIGHT = 148;
 
@@ -66,6 +67,16 @@ export function renderIsland(root, navigate, { subjectId }) {
   // ACT's ocean.
   if (subjectId === "sat-rw") {
     renderSatRwHub(root, navigate, subject);
+    return;
+  }
+
+  // SAT Math (Function Fields) gets its own walkable hub too — Numeria
+  // Peaks' own territory-tiled archipelago (sat-math's 4 reporting
+  // categories are just as uneven as ACT Math's own), reskinned for
+  // SAT's Sky Islands theme instead of ACT's ocean (see satMathHub.js's
+  // own header comment).
+  if (subjectId === "sat-math") {
+    renderSatMathHub(root, navigate, subject);
     return;
   }
 
