@@ -6,7 +6,25 @@
 // boundary line with the solution's own half-plane shaded on one side
 // of it — solid when the boundary itself is included (≤/≥), dashed
 // when it's strict (</>), alternating both which style applies and
-// which side is shaded so neither reads as the only possibility.
+// which side is shaded so neither reads as the only possibility. The
+// shaded region is deliberately a big, bold wedge (DEPTH below), not a
+// thin band hugging the line — an earlier, thinner version read as one
+// more diagonal-line variant, the same complaint this zone's own three
+// other line-based themes drew before slopeTriangle.js's rise/run
+// triangle, plottedLine.js's axis-and-ticks diagram, and
+// crossingLines.js's crossed rods each became their own real shape; a
+// real region has to actually look like one to read as different from
+// a line with an accessory. The one lesson stop immediately before the
+// boss clearing is a real exception: it sits only one row (ROW_H, 140)
+// above the boss circle (its own radius 86), and at full DEPTH the
+// wedge's own far corner can land inside that circle for lesson counts
+// this zone's own real question banks actually produce (up to 50
+// lessons) — every earlier stop sits at least two rows away and is
+// always safe regardless of DEPTH. NEAR_BOSS_DEPTH only ever applies to
+// that one stop; see crossingLines.js's own header comment for the
+// twin of this problem, and tests/slopeFieldsLessonThemes.test.js's own
+// dedicated boss-clearance check (sweeping every real lesson count) for
+// the numbers behind both constants.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -44,35 +62,41 @@ function renderAxisWatermark(totalHeight) {
 }
 
 // The boundary line's own two endpoints, plus the same two points pushed
-// perpendicular to one side by `depth` — a real shaded half-plane local
+// perpendicular to one side by `DEPTH` — a real shaded half-plane local
 // to this stop (which side it pushes toward is what "which side is
 // shaded" actually means here), not a decorative tint unrelated to the
-// line's own direction.
-function renderBoundaryStop(p, i) {
+// line's own direction. `DEPTH` (55, up from an earlier, thinner 32) is
+// still comfortably short of crowding the next row (ROW_H is 140) at
+// this line's own shallow angle — see this file's own header comment
+// for why the region needs to actually read as a region.
+const DEPTH = 55;
+const NEAR_BOSS_DEPTH = 20;
+// `nearBoss` (true only for the one stop immediately before the boss
+// clearing — see this file's own header comment) swaps in the
+// shallower, boss-safe depth.
+function renderBoundaryStop(p, i, nearBoss) {
   const strict = i % 2 === 0;
   const shadeSide = i % 4 < 2 ? 1 : -1;
-  const a = { x: p.x - 50, y: p.y - 20 };
-  const b = { x: p.x + 50, y: p.y + 20 };
+  const depth = nearBoss ? NEAR_BOSS_DEPTH : DEPTH;
+  const a = { x: p.x - 58, y: p.y - 22 };
+  const b = { x: p.x + 58, y: p.y + 22 };
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len = Math.hypot(dx, dy) || 1;
-  const depth = 32;
   const px = (-dy / len) * depth * shadeSide;
   const py = (dx / len) * depth * shadeSide;
   const c = { x: b.x + px, y: b.y + py };
   const d = { x: a.x + px, y: a.y + py };
   return `
-    <path d="M${a.x.toFixed(1)},${a.y.toFixed(1)} L${b.x.toFixed(1)},${b.y.toFixed(1)} L${c.x.toFixed(1)},${c.y.toFixed(1)} L${d.x.toFixed(1)},${d.y.toFixed(1)} Z" fill="${ACCENT}" opacity="0.3" />
-    <line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${INK}" stroke-width="4" stroke-linecap="round" ${strict ? 'stroke-dasharray="7 6"' : ""} />
+    <path d="M${a.x.toFixed(1)},${a.y.toFixed(1)} L${b.x.toFixed(1)},${b.y.toFixed(1)} L${c.x.toFixed(1)},${c.y.toFixed(1)} L${d.x.toFixed(1)},${d.y.toFixed(1)} Z" fill="${ACCENT}" opacity="0.4" />
+    <line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${INK}" stroke-width="5" stroke-linecap="round" ${strict ? 'stroke-dasharray="7 6"' : ""} />
   `;
 }
 
 function renderBoundaries(positions) {
   const bossIndex = positions.length - 1;
-  return positions
-    .filter((_, i) => i !== bossIndex)
-    .map((p, i) => renderBoundaryStop(p, i))
-    .join("");
+  const stops = positions.filter((_, i) => i !== bossIndex);
+  return stops.map((p, i) => renderBoundaryStop(p, i, i === stops.length - 1)).join("");
 }
 
 function renderScene(positions, totalHeight, bossName) {

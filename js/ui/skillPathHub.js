@@ -274,27 +274,33 @@
 // scale at every stop holding an x tile and a numeral tile in perfect
 // balance, alternating which pan holds x; Line Reader gets a plotted
 // line segment with its own real rise/run triangle drawn in beside it,
-// alternating a rising line and a falling one; Graph Plotter gets two
-// real plotted points on the same line the lesson marker itself already
-// sits on (a third dot drawn directly under that marker never actually
-// showed), the newer one ringed as just placed, rather than one
-// finished line with nothing showing how it got there;
-// Crossing Point gets two lines in two different inks, each built as a
-// mirror pair of offsets around the same center point so they
-// genuinely intersect exactly there — the same "solved algebraically,
-// not guessed" standard Numeria Peaks' own Curve Ball already holds its
-// own parabola intersections to; and Boundary Setter gets a real
-// boundary line with its own solution half-plane shaded to one side,
-// alternating a solid boundary and a dashed one and which side is
-// shaded. Every one of Slope Fields' five files keeps its own real
-// content clear of (or, for a thin line/stroke, comfortably accepts
-// passing through) the game's own "Lesson N" marker button — at a
-// realistic mobile width that marker's own radius runs to ≈38 local
-// units, not the few pixels it measures in this project's own oversized
-// automation viewport, which is what let a real overlap on Equation
-// Solver's own fulcrum (and an uselessly small intersection ring on
-// Crossing Point, since removed) both ship looking fine in a
-// standalone check before being caught against the real in-game render.
+// alternating a rising line and a falling one; Graph Plotter gets a
+// real x-axis and y-axis meeting at a corner, with dashed guide lines
+// projecting from the lesson marker's own point down to a tick on each
+// axis (an earlier version was two dots on a plain diagonal, which just
+// read as a smaller rise/run triangle); Crossing Point gets two solid
+// crossed rods — thick, rounded bars, not two more thin ink lines —
+// pivoting on the same real point so they genuinely intersect exactly
+// there, the same "solved algebraically, not guessed" standard Numeria
+// Peaks' own Curve Ball already holds its own parabola intersections to
+// (an earlier version used thin lines, once with a small ring at the
+// intersection and once without, both still reading as diagonal-line
+// variants); and Boundary Setter gets a real boundary line with a big,
+// bold solution half-plane shaded to one side of it (not a thin band
+// hugging the line), alternating a solid boundary and a dashed one and
+// which side is shaded. These four each started as some version of "a
+// diagonal ink line plus one accessory," which read as near-identical
+// variations of the same theme rather than four different places —
+// fixed by giving each its own real shape or object instead: a
+// triangle, a pair of axes, two crossed rods, a shaded wedge. Every one
+// of Slope Fields' five files keeps its own real content clear of (or,
+// for a thin line/stroke, comfortably accepts passing through) the
+// game's own "Lesson N" marker button — at a realistic mobile width
+// that marker's own radius runs to ≈38 local units, not the few pixels
+// it measures in this project's own oversized automation viewport,
+// which is what let a real overlap on Equation Solver's own fulcrum
+// ship looking fine in a standalone check before being caught against
+// the real in-game render.
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared

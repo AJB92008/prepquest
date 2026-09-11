@@ -7,6 +7,7 @@
 import { GameState, gameState } from "../js/state.js";
 import { COL_W, computeTrail, totalHeightFor } from "../js/ui/lessonTerrain.js";
 import { LESSON_THEMES, renderThemedLessonPath } from "../js/ui/skillPathHub.js";
+import { getLessonCount } from "../js/data/questions/index.js";
 import { test, assertEqual, assertTrue } from "./assert.js";
 
 function freshGameState() {
@@ -149,7 +150,7 @@ test("slopeTriangleTheme's rise/run legs always share their own endpoints with t
   });
 });
 
-test("plottedLineTheme's two plotted points at every stop are genuinely collinear with the real stop point itself, not just visually close", () => {
+test("plottedLineTheme's two axes share a real origin corner and are genuinely perpendicular, and both dashed guides really reach the real stop point", () => {
   const theme = LESSON_THEMES["satmath-linear2var"];
   const count = 6;
   const positions = computeTrail(count, theme.trailBand);
@@ -159,20 +160,38 @@ test("plottedLineTheme's two plotted points at every stop are genuinely collinea
   root.innerHTML = svgString;
   const stops = positions.slice(0, -1);
   stops.forEach((p, i) => {
-    const dots = [...root.querySelectorAll('circle[r="5"]')].filter((c) => Math.abs(Number(c.getAttribute("cy")) - p.y) < 50);
-    assertEqual(dots.length, 2, `expected 2 real plotted points at stop ${i}, got ${dots.length}`);
-    const [a, b] = dots.map((d) => ({ x: Number(d.getAttribute("cx")), y: Number(d.getAttribute("cy")) })).sort((m, n) => m.x - n.x);
-    // `p` itself comes straight from computeTrail's own unrounded floats,
-    // but a/b were parsed back out of renderScene's own SVG string, which
-    // rounds every coordinate to 1 decimal place (toFixed(1)) first —
-    // rounding `p` the same way before comparing keeps the cross product
-    // a check of genuine collinearity, not an artifact of comparing two
-    // different precisions against each other (a small but real gap this
-    // test hit once already, at a tolerance too tight to be that, before
-    // this rounding was added).
-    const pr = { x: Number(p.x.toFixed(1)), y: Number(p.y.toFixed(1)) };
-    const cross = (b.x - a.x) * (pr.y - a.y) - (b.y - a.y) * (pr.x - a.x);
-    assertTrue(Math.abs(cross) < 0.5, `expected stop ${i}'s own 2 points and the real stop point itself to be exactly collinear, got a cross product of ${cross.toFixed(3)}`);
+    const originY = p.y + 46;
+
+    // Both dashed guides run from an axis tick straight to the real
+    // stop point — found by an exact shared endpoint, not an assumed
+    // position.
+    const dashed = [...root.querySelectorAll("line")].filter((l) => {
+      if (!l.getAttribute("stroke-dasharray")) return false;
+      const nearRow = Math.abs(Number(l.getAttribute("y1")) - originY) < 70 || Math.abs(Number(l.getAttribute("y2")) - originY) < 70;
+      const touchesStop =
+        (Math.abs(Number(l.getAttribute("x1")) - p.x) < 0.5 && Math.abs(Number(l.getAttribute("y1")) - p.y) < 0.5) ||
+        (Math.abs(Number(l.getAttribute("x2")) - p.x) < 0.5 && Math.abs(Number(l.getAttribute("y2")) - p.y) < 0.5);
+      return nearRow && touchesStop;
+    });
+    assertEqual(dashed.length, 2, `expected exactly 2 dashed guides reaching stop ${i}'s own real point, got ${dashed.length}`);
+
+    // Both solid axis lines start from the same real origin corner
+    // (wherever `y1` or `y2` equals `originY`) — found by that shared
+    // point, not by assuming which side of the stop the corner sits on
+    // (it alternates left/right stop to stop).
+    const solid = [...root.querySelectorAll("line")].filter((l) => {
+      if (l.getAttribute("stroke-dasharray")) return false;
+      return Math.abs(Number(l.getAttribute("y1")) - originY) < 0.5 || Math.abs(Number(l.getAttribute("y2")) - originY) < 0.5;
+    });
+    assertEqual(solid.length, 2, `expected exactly 2 real axis lines meeting at stop ${i}'s own origin corner, got ${solid.length}`);
+    const origins = solid.map((l) => {
+      const y1 = Number(l.getAttribute("y1"));
+      return Math.abs(y1 - originY) < 0.5 ? { x: Number(l.getAttribute("x1")), y: y1 } : { x: Number(l.getAttribute("x2")), y: Number(l.getAttribute("y2")) };
+    });
+    assertTrue(Math.abs(origins[0].x - origins[1].x) < 0.5 && Math.abs(origins[0].y - origins[1].y) < 0.5, `expected stop ${i}'s own x-axis and y-axis to share the exact same real origin corner`);
+    const vecs = solid.map((l) => ({ dx: Number(l.getAttribute("x2")) - Number(l.getAttribute("x1")), dy: Number(l.getAttribute("y2")) - Number(l.getAttribute("y1")) }));
+    const dot = vecs[0].dx * vecs[1].dx + vecs[0].dy * vecs[1].dy;
+    assertTrue(Math.abs(dot) < 1, `expected stop ${i}'s own x-axis and y-axis to be genuinely perpendicular, got a dot product of ${dot.toFixed(3)}`);
   });
 });
 
@@ -243,7 +262,12 @@ test("every Slope Fields theme's own real dots/tiles/solid shapes stay clear of 
     const p = positions[0];
 
     const dots = [...root.querySelectorAll("circle")].filter((c) => Number(c.getAttribute("r")) >= 4);
-    const tiles = [...root.querySelectorAll("rect")].filter((r) => Number(r.getAttribute("width")) > 0 && Number(r.getAttribute("width")) < 100);
+    // Deliberately excludes `rect[transform]` (crossingLinesTheme's own
+    // rotated rods): this filter reads raw `x`/`y`/`width`/`height`,
+    // which describe a rect's *pre-rotation* box, so measuring a rotated
+    // rect here would check the wrong position entirely. Rods get their
+    // own dedicated real-clearance check below instead.
+    const tiles = [...root.querySelectorAll("rect")].filter((r) => !r.hasAttribute("transform") && Number(r.getAttribute("width")) > 0 && Number(r.getAttribute("width")) < 100);
     // Deliberately excludes `line` elements (every dashed rise/run leg,
     // boundary, and crossing-line stroke in this zone) — a thin stroke
     // passing at or through the marker's own position is an already-
@@ -293,7 +317,12 @@ test("every Slope Fields theme's own real dots/tiles/solid shapes stay clear of 
   });
 });
 
-test("crossingLinesTheme's two lines at every stop genuinely share the same real intersection point", () => {
+function parseRotate(transform) {
+  const m = transform.match(/rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)/);
+  return { angle: Number(m[1]), cx: Number(m[2]), cy: Number(m[3]) };
+}
+
+test("crossingLinesTheme's two rods genuinely pivot on the same real intersection point and cross at two different angles", () => {
   const theme = LESSON_THEMES["satmath-systems"];
   const count = 6;
   const positions = computeTrail(count, theme.trailBand);
@@ -303,13 +332,66 @@ test("crossingLinesTheme's two lines at every stop genuinely share the same real
   root.innerHTML = svgString;
   const stops = positions.slice(0, -1);
   stops.forEach((p, i) => {
-    const nearbyLines = [...root.querySelectorAll("line")].filter((l) => Math.abs((Number(l.getAttribute("y1")) + Number(l.getAttribute("y2"))) / 2 - p.y) < 45);
-    assertEqual(nearbyLines.length, 2, `expected exactly 2 crossing lines at stop ${i}, got ${nearbyLines.length}`);
-    nearbyLines.forEach((line) => {
-      const midX = (Number(line.getAttribute("x1")) + Number(line.getAttribute("x2"))) / 2;
-      const midY = (Number(line.getAttribute("y1")) + Number(line.getAttribute("y2"))) / 2;
-      assertTrue(Math.abs(midX - p.x) < 0.5 && Math.abs(midY - p.y) < 0.5, `expected stop ${i}'s own line to be centered exactly on its own real intersection point, got midpoint (${midX.toFixed(1)}, ${midY.toFixed(1)}) vs (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`);
+    const rods = [...root.querySelectorAll("rect[transform]")].filter((r) => Math.abs(parseRotate(r.getAttribute("transform")).cy - p.y) < 60);
+    assertEqual(rods.length, 2, `expected exactly 2 crossed rods at stop ${i}, got ${rods.length}`);
+    rods.forEach((rod) => {
+      const { cx, cy } = parseRotate(rod.getAttribute("transform"));
+      // The rotate transform's own pivot must match the rect's own real
+      // pre-rotation center (not some other point) for the rod to
+      // actually pivot on itself rather than swing around a corner.
+      const rectCx = Number(rod.getAttribute("x")) + Number(rod.getAttribute("width")) / 2;
+      const rectCy = Number(rod.getAttribute("y")) + Number(rod.getAttribute("height")) / 2;
+      assertTrue(Math.abs(rectCx - cx) < 0.5 && Math.abs(rectCy - cy) < 0.5, `expected stop ${i}'s own rod to rotate around its own real center`);
+      assertTrue(Math.abs(cx - p.x) < 0.5 && Math.abs(cy - p.y) < 0.5, `expected stop ${i}'s own rod to pivot exactly on the real stop point (${p.x.toFixed(1)}, ${p.y.toFixed(1)}), got (${cx.toFixed(1)}, ${cy.toFixed(1)})`);
     });
+    const angles = rods.map((r) => parseRotate(r.getAttribute("transform")).angle);
+    assertTrue(Math.abs(angles[0] + angles[1]) < 0.5, `expected the two rods' own angles to mirror each other around horizontal, got ${angles[0]} and ${angles[1]}`);
+    assertTrue(Math.abs(angles[0] - angles[1]) > 5, `expected the two rods to cross at genuinely different angles, got ${angles[0]} and ${angles[1]}`);
+  });
+});
+
+// A thin line's identity (its own length and direction) survives the
+// real marker button sitting on top of it — the "Line Crossing"
+// precedent every other clearance check in this file leans on — but a
+// rod's identity as half of a crossing does not: if the marker's own
+// radius eats most of the rod's own half-length, what's left reads as a
+// stubby tab, not a rod reaching through an intersection. This checks
+// the actual surviving length directly against MARKER_RADIUS_LOCAL,
+// the same real mobile-scale radius the clearance test above uses,
+// rather than trusting ROD_LENGTH's own source-file comment to stay
+// honest as the shape evolves.
+test("crossingLinesTheme's rods keep real visible length on both sides of the marker, and stay clear of the neighboring row at the wide angle", () => {
+  const theme = LESSON_THEMES["satmath-systems"];
+  const count = 6;
+  const positions = computeTrail(count, theme.trailBand);
+  const totalHeight = totalHeightFor(count);
+  const svgString = theme.renderScene(positions, totalHeight, BOSS_NAME);
+  const root = document.createElement("div");
+  root.innerHTML = svgString;
+  const p = positions[0];
+  const rods = [...root.querySelectorAll("rect[transform]")].filter((r) => Math.abs(parseRotate(r.getAttribute("transform")).cy - p.y) < 60);
+  assertEqual(rods.length, 2, `expected exactly 2 crossed rods at stop 0, got ${rods.length}`);
+
+  // ROW_H in lessonTerrain.js (not exported; 140 here is that same
+  // reviewed constant) is how far apart two stops' own rows sit —
+  // a rod's vertical reach at its own rotation angle has to stay under
+  // half of that or it crowds the next stop's own art.
+  const ROW_H = 140;
+
+  rods.forEach((rod) => {
+    const width = Number(rod.getAttribute("width"));
+    const half = width / 2;
+    const survives = half - MARKER_RADIUS_LOCAL;
+    assertTrue(
+      survives > 20,
+      `expected each rod's own half-length (${half.toFixed(1)}) to clear the marker's real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}) by a real visible margin, got only ${survives.toFixed(1)} local units surviving`
+    );
+    const angle = Math.abs(parseRotate(rod.getAttribute("transform")).angle);
+    const verticalReach = half * Math.sin((angle * Math.PI) / 180);
+    assertTrue(
+      verticalReach < ROW_H / 2,
+      `expected a rod at angle ${angle}° to stay within half a row (${(ROW_H / 2).toFixed(1)}) of the stop it belongs to, got a vertical reach of ${verticalReach.toFixed(1)}`
+    );
   });
 });
 
@@ -338,10 +420,83 @@ test("boundaryLineTheme's boundary style (solid/dashed) alternates every stop, a
     const pts = [];
     for (let k = 0; k < nums.length; k += 2) pts.push({ x: nums[k], y: nums[k + 1] });
     const centroid = { x: pts.reduce((s, q) => s + q.x, 0) / pts.length, y: pts.reduce((s, q) => s + q.y, 0) / pts.length };
-    const a = { x: p.x - 50, y: p.y - 20 };
-    const b = { x: p.x + 50, y: p.y + 20 };
+    const a = { x: p.x - 58, y: p.y - 22 };
+    const b = { x: p.x + 58, y: p.y + 22 };
     const cross = (b.x - a.x) * (centroid.y - a.y) - (b.y - a.y) * (centroid.x - a.x);
     const shadeSide = i % 4 < 2 ? 1 : -1;
     assertEqual(cross > 0, shadeSide > 0, `expected stop ${i}'s own shaded region to fall on the geometrically correct side of its own boundary line`);
   });
+});
+
+// The existing "no theme places a decorative feature on the boss
+// clearing" test above only ever checks a shape's own *center* against
+// the boss circle (via cx/cy for circles, x+width/2 for rects), and
+// only for a handful of counts (5, 10, 15, 20, 25, 28). Neither is
+// enough here: a crossingLinesTheme rod's own pre-rotation rect is
+// always centered exactly on its own stop point (a full row, 140 local
+// units, from the boss) no matter how the rod is rotated, so a
+// center-only check can never see a rotated corner swinging in close to
+// the boss — and a boundaryLineTheme wedge is a filled `path`, which
+// that test never even queries for. Both shapes' own real risk is
+// their own farthest *vertex*, and only for the one lesson stop
+// immediately before the boss (every earlier stop sits at least two
+// rows away and is always safe) — so this checks vertices directly,
+// across every lesson count these two skills' own real question banks
+// can actually produce (getLessonCount, not an arbitrary sample), the
+// same standard this file's own "real lesson count" tests already hold
+// themselves to.
+test("crossingLinesTheme's rods and boundaryLineTheme's shaded wedge never reach into the boss clearing, at every real lesson count", () => {
+  const BOSS_R = 86;
+
+  const crossingCount = getLessonCount("satmath-systems");
+  for (let count = 2; count <= crossingCount; count++) {
+    const positions = computeTrail(count, LESSON_THEMES["satmath-systems"].trailBand);
+    const totalHeight = totalHeightFor(count);
+    const svgString = LESSON_THEMES["satmath-systems"].renderScene(positions, totalHeight, BOSS_NAME);
+    const root = document.createElement("div");
+    root.innerHTML = svgString;
+    const boss = positions[positions.length - 1];
+    const rods = [...root.querySelectorAll("rect[transform]")].filter((r) => Math.abs(parseRotate(r.getAttribute("transform")).cy - positions[positions.length - 2].y) < 60);
+    assertEqual(rods.length, 2, `expected exactly 2 rods on the stop right before the boss at lesson count ${count}, got ${rods.length}`);
+    rods.forEach((rod) => {
+      const { angle, cx, cy } = parseRotate(rod.getAttribute("transform"));
+      const w = Number(rod.getAttribute("width"));
+      const h = Number(rod.getAttribute("height"));
+      const rad = (angle * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      [
+        [-w / 2, -h / 2],
+        [w / 2, -h / 2],
+        [w / 2, h / 2],
+        [-w / 2, h / 2],
+      ].forEach(([lx, ly]) => {
+        const vx = cx + lx * cos - ly * sin;
+        const vy = cy + lx * sin + ly * cos;
+        const dist = Math.hypot(vx - boss.x, vy - boss.y);
+        assertTrue(dist > BOSS_R, `expected the pre-boss rod's own corner at (${vx.toFixed(1)}, ${vy.toFixed(1)}) to clear the boss clearing (radius ${BOSS_R}) at lesson count ${count}, got ${dist.toFixed(1)}`);
+      });
+    });
+  }
+
+  const boundaryCount = getLessonCount("satmath-linineq");
+  for (let count = 2; count <= boundaryCount; count++) {
+    const positions = computeTrail(count, LESSON_THEMES["satmath-linineq"].trailBand);
+    const totalHeight = totalHeightFor(count);
+    const svgString = LESSON_THEMES["satmath-linineq"].renderScene(positions, totalHeight, BOSS_NAME);
+    const root = document.createElement("div");
+    root.innerHTML = svgString;
+    const boss = positions[positions.length - 1];
+    const preBoss = positions[positions.length - 2];
+    const wedge = [...root.querySelectorAll("path")].find((el) => {
+      const d = el.getAttribute("d") || "";
+      return el.getAttribute("fill") !== "none" && d.startsWith("M") && Math.abs(preBoss.y - Number((d.match(/M([-\d.]+),([-\d.]+)/) || [])[2] || 0)) < 40;
+    });
+    assertTrue(!!wedge, `expected a real shaded wedge on the stop right before the boss at lesson count ${count}`);
+    const nums = (wedge.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
+    for (let k = 0; k < nums.length; k += 2) {
+      const dist = Math.hypot(nums[k] - boss.x, nums[k + 1] - boss.y);
+      assertTrue(dist > BOSS_R, `expected the pre-boss wedge's own corner at (${nums[k].toFixed(1)}, ${nums[k + 1].toFixed(1)}) to clear the boss clearing (radius ${BOSS_R}) at lesson count ${count}, got ${dist.toFixed(1)}`);
+    }
+  }
 });

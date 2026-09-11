@@ -2,23 +2,48 @@
 // skill (see lessonTerrain.js for the shared engine every lesson-path
 // theme renders through, and equationScale.js's own header comment for
 // this zone's own "Graph Paper" family). Crossing Point is about solving
-// a system of two linear equations, so every stop draws two real lines
-// in two different inks, each one built symmetrically around the same
-// center point so they genuinely intersect exactly there rather than
-// just passing near each other — the same "solved algebraically, not
-// guessed" standard Numeria Peaks' own Curve Ball already holds its own
-// parabola intersections to. No separate ring drawn at the real
-// intersection itself (an earlier draft added one) — the game's own
-// real "Lesson N" marker button already renders centered exactly there,
-// and at a realistic mobile width it's ≈38 local units in radius (see
-// equationScale.js's own header comment for the arithmetic this whole
-// zone now accounts for), big enough to swallow a small ring outright
-// rather than frame it. The two crossing lines themselves are
-// safe left alone: a thin stroke passing at or through the marker's own
-// position is already an established, accepted look in this app —
-// Numeria Peaks' own Line Crossing zone is one continuous diagonal line
-// doing exactly that at every stop. Alternates a steep crossing and a
-// shallow one stop to stop.
+// a system of two linear equations, so every stop crosses two solid
+// rods — thick, rounded bars with their own fill and border, read as
+// real crossed objects rather than two more thin ink lines — pivoting
+// around the same real stop point so they genuinely intersect exactly
+// there rather than just passing near each other, the same "solved
+// algebraically, not guessed" standard Numeria Peaks' own Curve Ball
+// already holds its own parabola intersections to. An earlier draft
+// here used plain thin lines (twice — first with a small ring at the
+// intersection, then without after the ring proved too small to survive
+// the real marker's own mobile-scale footprint); both versions still
+// read as a smaller variant of slopeTriangle.js's own diagonal, so this
+// one trades line weight for real solidity instead of adding another
+// accessory. A thin line is safe pivoting through the marker's own
+// point because its *identity* (length, direction) survives the button
+// sitting on top of it, the Numeria Peaks "Line Crossing" precedent —
+// but a crossing's identity *is* its center, so a rod has to actually
+// reach past the marker and still show real length on both sides, not
+// merely clear the marker at its own (pre-rotation) width the way a
+// tile/dot would. ROD_LENGTH (140, half-length 70) is sized against the
+// real ~38-unit mobile-scale marker radius (see equationScale.js's own
+// header comment) so a real fraction of each rod's own half-length
+// survives past it — a visible tab on each of the X's four arms, not a
+// stub — and this length never shrinks: the marker-clearance concern is
+// purely radial (half-length vs. marker radius), so a shorter rod would
+// have quietly cost every stop the same visible tab, not just the one
+// this file actually has a problem at.
+// The one lesson stop immediately before the boss clearing has a
+// second, unrelated concern: it sits only one row (ROW_H, 140) above
+// the boss circle (its own radius 86), and a wide-angle (62°) rod's own
+// rotated corner can land as close as ~75 local units from the boss
+// center — inside it — for lesson counts this zone's own real question
+// banks actually produce (up to 50 lessons). The fix is the angle, not
+// the length: forcing that one stop's rods to the narrow angle (24°,
+// already used every other stop half the time) drops the corner's own
+// vertical reach enough that it clears the boss by a wide, count-
+// independent margin (~20 units, verified across every real lesson
+// count) while keeping the same ROD_LENGTH and the same visible tab
+// every other stop gets. Every earlier stop sits at least two rows from
+// the boss, always safe regardless of angle. See tests/slopeFields
+// LessonThemes.test.js's own dedicated boss-clearance check (which
+// sweeps every real lesson count, not just a handful) for the numbers.
+// Alternates a wide-angle crossing and a narrow one stop to stop.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -55,27 +80,38 @@ function renderAxisWatermark(totalHeight) {
   `;
 }
 
-// Two lines, each built as a mirror pair of offsets around `p` itself
-// (±half on x, ±rise on y) — the center point is always exactly the
-// true midpoint of both segments, so the two lines share that point by
-// construction, not by eyeballing two segments that merely look close.
-function renderCrossingStop(p, i) {
-  const half = 46;
-  const steep = i % 2 === 0;
-  const riseA = steep ? 34 : 16;
-  const riseB = steep ? 16 : 34;
-  return `
-    <line x1="${(p.x - half).toFixed(1)}" y1="${(p.y - riseA).toFixed(1)}" x2="${(p.x + half).toFixed(1)}" y2="${(p.y + riseA).toFixed(1)}" stroke="${INK}" stroke-width="3.5" stroke-linecap="round" />
-    <line x1="${(p.x - half).toFixed(1)}" y1="${(p.y + riseB).toFixed(1)}" x2="${(p.x + half).toFixed(1)}" y2="${(p.y - riseB).toFixed(1)}" stroke="${ACCENT}" stroke-width="3.5" stroke-linecap="round" />
-  `;
+const ROD_LENGTH = 140;
+const NARROW_ANGLE = 24;
+const WIDE_ANGLE = 62;
+const ROD_THICKNESS = 13;
+
+// A single rod, centered exactly on (cx, cy) before rotation — pivoting
+// it around its own center via `transform="rotate(...)"` is what keeps
+// two rods sharing one real intersection point by construction, the
+// same guarantee the old mirrored-offset lines gave, just built from a
+// rotation instead of mirrored coordinates.
+function renderRod(cx, cy, angleDeg, fill, stroke) {
+  const x = cx - ROD_LENGTH / 2;
+  const y = cy - ROD_THICKNESS / 2;
+  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${ROD_LENGTH}" height="${ROD_THICKNESS}" rx="${ROD_THICKNESS / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" transform="rotate(${angleDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})" />`;
+}
+
+// Two rods, symmetric around horizontal (+angle/-angle) so they cross
+// in a clean X centered on `p` — `wide` alternates a wide-angle
+// crossing and a narrow one stop to stop, except at the one stop right
+// before the boss clearing (`nearBoss` — see this file's own header
+// comment), which is always forced to the narrow angle regardless of
+// `i`'s own parity, to keep its own rods' reach clear of the boss.
+function renderCrossingStop(p, i, nearBoss) {
+  const wide = !nearBoss && i % 2 === 0;
+  const angle = wide ? WIDE_ANGLE : NARROW_ANGLE;
+  return renderRod(p.x, p.y, angle, INK, BOSS_FILL) + renderRod(p.x, p.y, -angle, ACCENT, INK);
 }
 
 function renderCrossings(positions) {
   const bossIndex = positions.length - 1;
-  return positions
-    .filter((_, i) => i !== bossIndex)
-    .map((p, i) => renderCrossingStop(p, i))
-    .join("");
+  const stops = positions.filter((_, i) => i !== bossIndex);
+  return stops.map((p, i) => renderCrossingStop(p, i, i === stops.length - 1)).join("");
 }
 
 function renderScene(positions, totalHeight, bossName) {
@@ -84,7 +120,7 @@ function renderScene(positions, totalHeight, bossName) {
 
   return `
     <svg viewBox="0 0 ${COL_W} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" class="lesson-terrain-svg" role="img"
-      aria-label="A corner of Function Fields' Slope Fields: two lines in two different inks crossing at a real, exact intersection point at every stop, alternating a steep crossing and a shallow one, connecting every Crossing Point lesson up to ${bossName}'s own clearing">
+      aria-label="A corner of Function Fields' Slope Fields: two solid crossed rods pivoting on a real, exact intersection point at every stop, alternating a wide-angle crossing and a narrow one (the stop right before ${bossName}'s own clearing is always the narrow crossing), connecting every Crossing Point lesson up to that clearing">
       ${defs()}
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="url(#crossingLinesPaper)" />
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="url(#crossingLinesGrid)" opacity="0.6" />
