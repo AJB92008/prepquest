@@ -2,9 +2,14 @@
 // themes (see skillPathHub.js's own LESSON_THEMES map and
 // js/ui/lessonThemes/ for each skill's bespoke scene) — same coverage
 // slopeFieldsLessonThemes.test.js already gives Slope Fields, scoped to
-// Curve Reach's own 3 skills, the second Function Fields zone to get
-// bespoke lesson-path themes and the first to use its own "Rolling
-// Curve" family instead of Slope Fields' "Graph Paper."
+// Curve Reach's own 3 skills. Curve Shaper still uses this zone's own
+// "Rolling Curve" family (rolling hills, a tiled wave pattern); Root
+// Finder and Expression Rebuilder's own first themes in that family
+// read poorly enough that both were replaced outright with their own
+// unrelated, literal environments instead — underground tree roots and
+// a factory assembly line, respectively — so this file's own tests
+// span three genuinely different visual constructions, not variations
+// on one shared family.
 import { GameState, gameState } from "../js/state.js";
 import { COL_W, computeTrail, totalHeightFor } from "../js/ui/lessonTerrain.js";
 import { LESSON_THEMES, renderThemedLessonPath } from "../js/ui/skillPathHub.js";
@@ -159,7 +164,7 @@ test("curveArcTheme's vertex dot sits exactly on the arc's own real curve (not j
   });
 });
 
-test("rootCrossingTheme's line and curve genuinely cross at the marked ring's own real position, not just near it", () => {
+test("rootSystemTheme's taproot and lateral root genuinely fork at the sprout's own real position, not just near it", () => {
   const theme = LESSON_THEMES["satmath-nonlineareq"];
   const count = 6;
   const positions = computeTrail(count, theme.trailBand);
@@ -168,46 +173,42 @@ test("rootCrossingTheme's line and curve genuinely cross at the marked ring's ow
   const root = document.createElement("div");
   root.innerHTML = svgString;
   const stops = positions.slice(0, -1);
-  const rings = [...root.querySelectorAll('circle[r="6"]')];
-  const lines = [...root.querySelectorAll("line")].filter((l) => l.getAttribute("stroke-width") === "3.5");
-  // Excludes the trail path and the arc watermark — see curveArcTheme's
-  // own test above for why both are non-per-stop paths that also match
-  // " Q," and why excluding by `opacity` (neither per-stop arc sets
-  // one) is simpler and more direct than each one's own distinguishing
-  // attribute. Watermark exclusion matters here specifically: its own
-  // start x (54.4 at COL_W=680) falls inside this test's own 60-unit
-  // match tolerance for any real stop at `p.x` <= 114.4, which this
-  // zone's own BAND (90 to COL_W-90) can produce.
+  const sprouts = [...root.querySelectorAll('circle[r="6"]')];
+  const taproots = [...root.querySelectorAll("line")].filter((l) => l.getAttribute("stroke-width") === "6");
+  // Excludes the trail path — its own single long "M x y Q x y x y
+  // Q..." string also contains " Q" (see curveArcTheme's own test
+  // above); this zone has no separate arc watermark, so `opacity` alone
+  // (the trail sets one, no per-stop lateral root does) is enough here.
   const arcs = [...root.querySelectorAll("path")].filter((el) => (el.getAttribute("d") || "").includes(" Q") && !el.hasAttribute("opacity"));
   stops.forEach((p, i) => {
-    const ring = rings.find((r) => Math.abs(Number(r.getAttribute("cx")) - p.x) < 60);
-    assertTrue(!!ring, `expected a real root-marker ring near stop ${i}`);
-    const rx = Number(ring.getAttribute("cx"));
-    const ry = Number(ring.getAttribute("cy"));
+    const sprout = sprouts.find((r) => Math.abs(Number(r.getAttribute("cx")) - p.x) < 60);
+    assertTrue(!!sprout, `expected a real sprout marker near stop ${i}`);
+    const rx = Number(sprout.getAttribute("cx"));
+    const ry = Number(sprout.getAttribute("cy"));
 
-    const line = lines.find((l) => Math.abs(Number(l.getAttribute("x1")) - rx) < 60);
-    assertTrue(!!line, `expected a real line near stop ${i}'s own ring`);
-    const x1 = Number(line.getAttribute("x1"));
-    const y1 = Number(line.getAttribute("y1"));
-    const x2 = Number(line.getAttribute("x2"));
-    const y2 = Number(line.getAttribute("y2"));
-    // The ring's own position must lie exactly on the line's own real
-    // segment (collinear with its two real endpoints, not just close).
+    const taproot = taproots.find((l) => Math.abs(Number(l.getAttribute("x1")) - rx) < 60);
+    assertTrue(!!taproot, `expected a real taproot near stop ${i}'s own sprout`);
+    const x1 = Number(taproot.getAttribute("x1"));
+    const y1 = Number(taproot.getAttribute("y1"));
+    const x2 = Number(taproot.getAttribute("x2"));
+    const y2 = Number(taproot.getAttribute("y2"));
+    // The sprout's own position must lie exactly on the taproot's own
+    // real segment (collinear with its two real endpoints, not close).
     const cross = (x2 - x1) * (ry - y1) - (y2 - y1) * (rx - x1);
     // Tolerance is 5, not e.g. 0.5: the SVG string rounds every
     // coordinate to 0.1, and this cross product multiplies pairs of
     // ~100-unit differences, so independent 0.05 rounding errors on 4
     // separate coordinates compound past a tight tolerance even though
-    // the underlying construction is exactly collinear (the line and
-    // ring share the same real `cx`/`cy` before any string formatting).
-    assertTrue(Math.abs(cross) < 5, `expected stop ${i}'s own ring to sit exactly on its own line's real path, got a cross product of ${cross.toFixed(3)}`);
+    // the underlying construction is exactly collinear (the taproot and
+    // sprout share the same real `cx`/`cy` before any string formatting).
+    assertTrue(Math.abs(cross) < 5, `expected stop ${i}'s own sprout to sit exactly on its own taproot's real path, got a cross product of ${cross.toFixed(3)}`);
 
     const arc = arcs.find((el) => Math.abs(rx - Number((el.getAttribute("d").match(/^M([-\d.]+),/) || [])[1] || 0)) < 60);
-    assertTrue(!!arc, `expected a real curve near stop ${i}'s own ring`);
+    assertTrue(!!arc, `expected a real lateral root near stop ${i}'s own sprout`);
     const nums = (arc.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
     const [, y0, , cyCtrl, , y1b] = nums;
     const trueMidY = 0.25 * y0 + 0.5 * cyCtrl + 0.25 * y1b;
-    assertTrue(Math.abs(trueMidY - ry) < 0.5, `expected stop ${i}'s own curve to genuinely pass through the ring's own real point at its own real vertex, got a curve vertex of ${trueMidY.toFixed(1)} vs the ring's own ${ry.toFixed(1)}`);
+    assertTrue(Math.abs(trueMidY - ry) < 0.5, `expected stop ${i}'s own lateral root to genuinely pass through the sprout's own real point at its own real fork, got a fork of ${trueMidY.toFixed(1)} vs the sprout's own ${ry.toFixed(1)}`);
   });
 });
 
@@ -243,7 +244,7 @@ function evalExpr(form, x, y = x + 1) {
   }
 }
 
-test("expressionSwapTheme's every expression pair is a genuine algebraic equivalent, not just matching-looking text", () => {
+test("assemblyLineTheme's every expression pair is a genuine algebraic equivalent, not just matching-looking text", () => {
   const theme = LESSON_THEMES["satmath-equivexpr"];
   const count = 10;
   const positions = computeTrail(count, theme.trailBand);
@@ -319,7 +320,13 @@ test("curveArcTheme's vertex dot clears the game's own 'Lesson N' marker at a re
   });
 });
 
-test("rootCrossingTheme's root ring and expressionSwapTheme's expression tiles clear the game's own 'Lesson N' marker at a realistic mobile width", () => {
+function distancePointToRect(px, py, rect) {
+  const dx = Math.max(rect.x - px, 0, px - (rect.x + rect.width));
+  const dy = Math.max(rect.y - py, 0, py - (rect.y + rect.height));
+  return Math.hypot(dx, dy);
+}
+
+test("rootSystemTheme's sprout, and assemblyLineTheme's expression plates/belt/gear, clear the game's own 'Lesson N' marker at a realistic mobile width", () => {
   const rootTheme = LESSON_THEMES["satmath-nonlineareq"];
   const exprTheme = LESSON_THEMES["satmath-equivexpr"];
   const count = 8;
@@ -329,30 +336,81 @@ test("rootCrossingTheme's root ring and expressionSwapTheme's expression tiles c
   const rootRoot = document.createElement("div");
   rootRoot.innerHTML = rootSvg;
   const p0 = rootPositions[0];
-  const ring = [...rootRoot.querySelectorAll('circle[r="6"]')].find((r) => Math.abs(Number(r.getAttribute("cx")) - p0.x) < 60);
-  assertTrue(!!ring, "expected a real root-marker ring at stop 0");
-  const ringDist = Math.hypot(Number(ring.getAttribute("cx")) - p0.x, Number(ring.getAttribute("cy")) - p0.y) - 6;
-  assertTrue(ringDist > MARKER_RADIUS_LOCAL, `expected the root ring to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${ringDist.toFixed(1)}`);
+  const sprout = [...rootRoot.querySelectorAll('circle[r="6"]')].find((r) => Math.abs(Number(r.getAttribute("cx")) - p0.x) < 60);
+  assertTrue(!!sprout, "expected a real sprout marker at stop 0");
+  const sproutDist = Math.hypot(Number(sprout.getAttribute("cx")) - p0.x, Number(sprout.getAttribute("cy")) - p0.y) - 6;
+  assertTrue(sproutDist > MARKER_RADIUS_LOCAL, `expected the sprout to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${sproutDist.toFixed(1)}`);
 
   const exprPositions = computeTrail(count, exprTheme.trailBand);
   const exprSvg = exprTheme.renderScene(exprPositions, totalHeightFor(count), BOSS_NAME);
   const exprRoot = document.createElement("div");
   exprRoot.innerHTML = exprSvg;
   const ep0 = exprPositions[0];
-  function distancePointToRect(px, py, rect) {
-    const dx = Math.max(rect.x - px, 0, px - (rect.x + rect.width));
-    const dy = Math.max(rect.y - py, 0, py - (rect.y + rect.height));
-    return Math.hypot(dx, dy);
-  }
-  // 70, not 90 — see expressionSwapTheme's own test above for why a
-  // wider window wrongly pulls in a neighboring row's own tiles too.
+
+  // 70, not 90 — see assemblyLineTheme's own test above for why a wider
+  // window wrongly pulls in a neighboring row's own pair too.
   const tiles = [...exprRoot.querySelectorAll('rect[width="84"]')].filter((r) => Math.abs(Number(r.getAttribute("y")) + 15 - ep0.y) < 70);
-  assertEqual(tiles.length, 2, "expected exactly 2 expression tiles at stop 0");
+  assertEqual(tiles.length, 2, "expected exactly 2 expression plates at stop 0");
   tiles.forEach((r) => {
     const rect = { x: Number(r.getAttribute("x")), y: Number(r.getAttribute("y")), width: 84, height: 30 };
     const dist = distancePointToRect(ep0.x, ep0.y, rect);
     assertTrue(dist > MARKER_RADIUS_LOCAL, `expected an expression tile to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${dist.toFixed(1)}`);
   });
+
+  // The belt (split into two segments around the gear specifically so
+  // neither one's own inner edge gets too close to `p` — see
+  // assemblyLine.js's own header comment on renderBeltSegment) and the
+  // gear itself are both real solid shapes competing with the marker
+  // for space the same way a tile does, unlike the old theme's own bare
+  // arrow line.
+  const belts = [...exprRoot.querySelectorAll('rect[height="6"]')].filter((r) => Math.abs(Number(r.getAttribute("y")) + 3 - ep0.y) < 70);
+  assertEqual(belts.length, 2, "expected exactly 2 belt segments at stop 0");
+  belts.forEach((r) => {
+    const rect = { x: Number(r.getAttribute("x")), y: Number(r.getAttribute("y")), width: Number(r.getAttribute("width")), height: 6 };
+    const dist = distancePointToRect(ep0.x, ep0.y, rect);
+    assertTrue(dist > MARKER_RADIUS_LOCAL, `expected a belt segment to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${dist.toFixed(1)}`);
+  });
+
+  const gear = [...exprRoot.querySelectorAll('circle[r="9"]')].find((c) => Math.abs(Number(c.getAttribute("cx")) - ep0.x) < 5);
+  assertTrue(!!gear, "expected a real gear at stop 0");
+  // The gear's own teeth (small rotated rects) reach further than its
+  // body — sampled directly via their own rotated corners rather than
+  // assumed, the same standard this file already holds crossingLines.js's
+  // own rotated rods to.
+  const teeth = [...exprRoot.querySelectorAll("rect")].filter((r) => {
+    const t = r.getAttribute("transform") || "";
+    const m = t.match(/rotate\([-\d.]+\s+([-\d.]+)\s+([-\d.]+)\)/);
+    return m && Math.abs(Number(m[1]) - ep0.x) < 5;
+  });
+  assertTrue(teeth.length > 0, "expected real gear teeth at stop 0");
+  let worstToothDist = Infinity;
+  teeth.forEach((tooth) => {
+    const m = tooth.getAttribute("transform").match(/rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)/);
+    const angle = Number(m[1]);
+    const cx = Number(m[2]);
+    const cy = Number(m[3]);
+    const w = Number(tooth.getAttribute("width"));
+    const h = Number(tooth.getAttribute("height"));
+    const x = Number(tooth.getAttribute("x"));
+    const y = Number(tooth.getAttribute("y"));
+    const rad = (angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    [
+      [0, 0],
+      [w, 0],
+      [0, h],
+      [w, h],
+    ].forEach(([lx, ly]) => {
+      const localX = x + lx - cx;
+      const localY = y + ly - cy;
+      const vx = cx + localX * cos - localY * sin;
+      const vy = cy + localX * sin + localY * cos;
+      const dist = Math.hypot(vx - ep0.x, vy - ep0.y);
+      if (dist < worstToothDist) worstToothDist = dist;
+    });
+  });
+  assertTrue(worstToothDist > MARKER_RADIUS_LOCAL, `expected the gear's own closest tooth corner to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${worstToothDist.toFixed(1)}`);
 });
 
 // All 3 Curve Reach themes were deliberately designed to keep their
@@ -410,6 +468,19 @@ test("every Curve Reach theme's own shapes never reach into the boss clearing, a
         const dy = Math.max(rect.y - boss.y, 0, boss.y - (rect.y + rect.height));
         const dist = Math.hypot(dx, dy);
         assertTrue(dist > BOSS_R, `expected "${skillId}"'s own expression tile near the pre-boss stop to clear the boss clearing (radius ${BOSS_R}) at lesson count ${count}, got ${dist.toFixed(1)}`);
+      });
+
+      // assemblyLineTheme's own belt segments — the general rect check
+      // above only matches `width="84"` (the plates); belts are a
+      // separate solid rect (height 6, real width varies) at a similar
+      // offset from `p`.
+      const belts = [...root.querySelectorAll('rect[height="6"]')].filter((r) => Math.abs(Number(r.getAttribute("y")) + 3 - preBoss.y) < 130);
+      belts.forEach((r) => {
+        const rect = { x: Number(r.getAttribute("x")), y: Number(r.getAttribute("y")), width: Number(r.getAttribute("width")), height: 6 };
+        const dx = Math.max(rect.x - boss.x, 0, boss.x - (rect.x + rect.width));
+        const dy = Math.max(rect.y - boss.y, 0, boss.y - (rect.y + rect.height));
+        const dist = Math.hypot(dx, dy);
+        assertTrue(dist > BOSS_R, `expected "${skillId}"'s own belt segment near the pre-boss stop to clear the boss clearing (radius ${BOSS_R}) at lesson count ${count}, got ${dist.toFixed(1)}`);
       });
     }
   });
