@@ -309,6 +309,25 @@
 // than floating over it; sized generously except at Graph Plotter's
 // own corner, this zone's single tightest boss-clearance margin, where
 // only the shadow's width (not its own reach toward a boss) could grow.
+// Function Fields' own Curve Reach zone (its second zone, see
+// satMathHub.js's own ZONES) starts a second family, "Rolling Curve" —
+// soft rolling-hill silhouettes and a tiled wave pattern standing in
+// for Slope Fields' own flat grid paper, since a zone about nonlinear,
+// curved functions reads better sitting in curved terrain than laid
+// flat on a diagram — across its own three skills: Curve Shaper gets a
+// real parabola arc with its own marked vertex at every stop,
+// alternating a hill (opens down) and a valley (opens up); Root Finder
+// gets a straight line crossing a real curve at one exact marked root,
+// alternating which way the line tilts; and Expression Rebuilder gets
+// two real expression tiles connected by a transform arrow, one form
+// rewritten into its own genuine algebraic equivalent, alternating
+// which side holds the starting form. All three keep their whole
+// composition on one fixed side of `p` — always above it, never
+// alternating toward the boss clearing one row below — which is what
+// keeps every one of them boss-safe unconditionally, without needing
+// the near-boss special-casing Slope Fields' own crossingLines.js/
+// boundaryLine.js required; see tests/curveReachLessonThemes.test.js's
+// own dedicated sweep for the swept numbers.
 
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
@@ -396,6 +415,9 @@ import { slopeTriangleTheme } from "./lessonThemes/slopeTriangle.js";
 import { plottedLineTheme } from "./lessonThemes/plottedLine.js";
 import { crossingLinesTheme } from "./lessonThemes/crossingLines.js";
 import { boundaryLineTheme } from "./lessonThemes/boundaryLine.js";
+import { curveArcTheme } from "./lessonThemes/curveArc.js";
+import { rootCrossingTheme } from "./lessonThemes/rootCrossing.js";
+import { expressionSwapTheme } from "./lessonThemes/expressionSwap.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -479,6 +501,9 @@ export const LESSON_THEMES = {
   "satmath-linear2var": plottedLineTheme,
   "satmath-systems": crossingLinesTheme,
   "satmath-linineq": boundaryLineTheme,
+  "satmath-nonlinearfunc": curveArcTheme,
+  "satmath-nonlineareq": rootCrossingTheme,
+  "satmath-equivexpr": expressionSwapTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
