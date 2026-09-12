@@ -300,7 +300,16 @@
 // it measures in this project's own oversized automation viewport,
 // which is what let a real overlap on Equation Solver's own fulcrum
 // ship looking fine in a standalone check before being caught against
-// the real in-game render.
+// the real in-game render. All five later got their own small flat
+// contact shadow at each shape's own real anchor point — the fulcrum's
+// base, the rise/run triangle's two dots, the axes' own corner, each
+// rod's own visible tip, the boundary line's two endpoints — the same
+// convention Lexicon Shoals' own windwardBough.js already uses for its
+// leaning trees, so every object reads as resting on the paper rather
+// than floating over it; sized generously except at Graph Plotter's
+// own corner, this zone's single tightest boss-clearance margin, where
+// only the shadow's width (not its own reach toward a boss) could grow.
+
 // Add a
 // new skill here (plus one line in skillPath.js's dispatch) rather
 // than writing a whole new file — that's the point of the shared

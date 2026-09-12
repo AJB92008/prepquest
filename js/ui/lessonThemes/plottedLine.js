@@ -14,7 +14,18 @@
 // dashes converging on the point from two directions instead of
 // measuring one line's own length. Alternates which corner the axes
 // meet at (so the guide lines approach from a different side) stop to
-// stop.
+// stop. A small flat contact shadow sits right at that corner (the
+// same windwardBough.js convention every file in this zone now uses)
+// so the two axes read as resting on the paper rather than floating
+// ink. That corner is this zone's own tightest boss-clearance margin —
+// swept across every real lesson count, the corner point itself never
+// comes within 94 local units of a boss clearing, only 8 to spare over
+// its own 86-unit radius — so the shadow keeps `ry` at 2 and skips the
+// downward nudge every other file's own shadow gets (its own real
+// closest point still clears at 90.5, a slimmer 4.5 to spare). `rx`
+// costs that margin nothing (a wider, still-flat ellipse's own closest
+// point to a boss sitting almost straight below barely moves), so it
+// grew freely to stay visible at a real mobile width instead.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -72,6 +83,7 @@ function renderAxisPlotStop(p, i) {
   const xEnd = originX + axisLen * mirror;
   const yEnd = originY - axisLen;
   return `
+    <ellipse cx="${originX.toFixed(1)}" cy="${(originY + 1.5).toFixed(1)}" rx="18" ry="2" fill="${BOSS_FILL}" opacity="0.5" />
     <line x1="${originX.toFixed(1)}" y1="${originY.toFixed(1)}" x2="${xEnd.toFixed(1)}" y2="${originY.toFixed(1)}" stroke="${INK}" stroke-width="3" stroke-linecap="round" marker-end="url(#plottedLineAxisArrow)" />
     <line x1="${originX.toFixed(1)}" y1="${originY.toFixed(1)}" x2="${originX.toFixed(1)}" y2="${yEnd.toFixed(1)}" stroke="${INK}" stroke-width="3" stroke-linecap="round" marker-end="url(#plottedLineAxisArrow)" />
     <line x1="${p.x.toFixed(1)}" y1="${originY.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="${ACCENT}" stroke-width="2.5" stroke-dasharray="4 5" />

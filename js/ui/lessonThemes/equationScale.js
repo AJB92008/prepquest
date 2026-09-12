@@ -91,6 +91,13 @@ function renderPan(x, beamY, label) {
 // footprint isn't knowable from local geometry alone, and this project
 // has already settled on 45 as a safe number for it (a 7-unit margin
 // over 37.8 at this one width — tighter, not more, on a narrower phone).
+// A flat contact shadow sits right at the fulcrum's own real base
+// (groundY, nudged 3 units further down) — the same "cast at the
+// object's own real weight" convention windwardBough.js already uses
+// for its own leaning trees — so the scale visibly rests on the paper
+// instead of hovering above it. `groundY` sits well above `p` (away
+// from the boss clearing one row below), so this shadow carries none
+// of crossingLines.js's/boundaryLine.js's own near-boss risk.
 const GROUND_CLEARANCE = 45;
 function renderScaleStop(p, i) {
   const xOnLeft = i % 2 === 0;
@@ -102,6 +109,7 @@ function renderScaleStop(p, i) {
   const rightLabel = xOnLeft ? String(value) : "x";
   return `
     <line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${groundY.toFixed(1)}" stroke="${INK}" stroke-width="2" opacity="0.45" />
+    <ellipse cx="${p.x.toFixed(1)}" cy="${(groundY + 3).toFixed(1)}" rx="24" ry="6" fill="${BOSS_FILL}" opacity="0.35" />
     <path d="M${(p.x - 10).toFixed(1)},${groundY.toFixed(1)} L${(p.x + 10).toFixed(1)},${groundY.toFixed(1)} L${p.x.toFixed(1)},${apexY.toFixed(1)} Z" fill="${INK}" />
     <line x1="${(p.x - halfSpan).toFixed(1)}" y1="${apexY.toFixed(1)}" x2="${(p.x + halfSpan).toFixed(1)}" y2="${apexY.toFixed(1)}" stroke="${INK}" stroke-width="3" stroke-linecap="round" />
     ${renderPan(p.x - halfSpan, apexY, leftLabel)}

@@ -96,6 +96,28 @@ function renderRod(cx, cy, angleDeg, fill, stroke) {
   return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${ROD_LENGTH}" height="${ROD_THICKNESS}" rx="${ROD_THICKNESS / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" transform="rotate(${angleDeg} ${cx.toFixed(1)} ${cy.toFixed(1)})" />`;
 }
 
+// A small flat contact shadow at one of a rod's own two real tips —
+// the same windwardBough.js convention every file in this zone now
+// uses, placed where the rod is actually visible (past the marker)
+// rather than at its own hidden pivot, so the rod reads as a real bar
+// resting on the paper instead of pinned flat against it. `mirror`
+// picks the tip past the rod's own *negative* direction instead of its
+// positive one — since cos is even, both rods' "positive" tips would
+// otherwise land at the exact same x (one shadow stacked over the
+// other, the far side of the X left with no shadow at all); mirroring
+// the second rod's own choice of tip puts one shadow on each side.
+// Swept across every real lesson count, the near-boss stop's own
+// shadow (always at the narrow angle — see this file's own header
+// comment) never comes within 102.3 local units of a boss clearing,
+// comfortably past its own 86-unit radius.
+function renderRodTipShadow(cx, cy, angleDeg, mirror) {
+  const rad = (angleDeg * Math.PI) / 180;
+  const reach = (mirror ? -1 : 1) * (ROD_LENGTH / 2 + 3);
+  const tipX = cx + reach * Math.cos(rad);
+  const tipY = cy + reach * Math.sin(rad) + 2;
+  return `<ellipse cx="${tipX.toFixed(1)}" cy="${tipY.toFixed(1)}" rx="8" ry="6" fill="${BOSS_FILL}" opacity="0.35" />`;
+}
+
 // Two rods, symmetric around horizontal (+angle/-angle) so they cross
 // in a clean X centered on `p` — `wide` alternates a wide-angle
 // crossing and a narrow one stop to stop, except at the one stop right
@@ -105,7 +127,12 @@ function renderRod(cx, cy, angleDeg, fill, stroke) {
 function renderCrossingStop(p, i, nearBoss) {
   const wide = !nearBoss && i % 2 === 0;
   const angle = wide ? WIDE_ANGLE : NARROW_ANGLE;
-  return renderRod(p.x, p.y, angle, INK, BOSS_FILL) + renderRod(p.x, p.y, -angle, ACCENT, INK);
+  return (
+    renderRodTipShadow(p.x, p.y, angle, false) +
+    renderRodTipShadow(p.x, p.y, -angle, true) +
+    renderRod(p.x, p.y, angle, INK, BOSS_FILL) +
+    renderRod(p.x, p.y, -angle, ACCENT, INK)
+  );
 }
 
 function renderCrossings(positions) {

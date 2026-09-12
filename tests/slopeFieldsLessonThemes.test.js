@@ -500,3 +500,85 @@ test("crossingLinesTheme's rods and boundaryLineTheme's shaded wedge never reach
     }
   }
 });
+
+// A shadow ellipse's closest point to an off-center boss isn't always
+// straight down from its own center — a wide, flat ellipse's own true
+// nearest point can sit at an angle once the boss isn't directly below
+// it. Rather than trust a `(cx, cy+ry)` shortcut to always be the worst
+// case, this samples the real ellipse contour directly.
+function ellipseMinDistToPoint(cx, cy, rx, ry, px, py, samples = 360) {
+  let min = Infinity;
+  for (let k = 0; k < samples; k++) {
+    const t = (k / samples) * 2 * Math.PI;
+    const dist = Math.hypot(cx + rx * Math.cos(t) - px, cy + ry * Math.sin(t) - py);
+    if (dist < min) min = dist;
+  }
+  return min;
+}
+
+// All 5 Slope Fields themes now cast a small flat "contact shadow"
+// (an <ellipse>, the same convention windwardBough.js already uses for
+// its own leaning trees) at each shape's own real anchor point, so
+// every object reads as resting on the paper rather than floating over
+// it. Every one of those shadows was placed by hand-checking its own
+// distance to a boss clearing (see each file's own header comment), but
+// a hand-check is exactly the kind of claim this file's own convention
+// is to verify directly rather than trust — so this sweeps every real
+// lesson count for all 5 skills and checks each shadow's own real
+// closest point (via ellipseMinDistToPoint, not an assumed direction)
+// never lands inside the boss clearing's real radius.
+test("every Slope Fields theme's own grounding shadow exists and never reaches into the boss clearing, at every real lesson count", () => {
+  const BOSS_R = 86;
+  const EXPECTED_SHADOWS_PER_STOP = {
+    "satmath-linear1var": 1,
+    "satmath-linearfunc": 2,
+    "satmath-linear2var": 1,
+    "satmath-systems": 2,
+    "satmath-linineq": 2,
+  };
+
+  SLOPE_FIELDS_SKILL_IDS.forEach((skillId) => {
+    const theme = LESSON_THEMES[skillId];
+    const maxCount = getLessonCount(skillId);
+    for (let count = 2; count <= maxCount; count++) {
+      const positions = computeTrail(count, theme.trailBand);
+      const totalHeight = totalHeightFor(count);
+      const svgString = theme.renderScene(positions, totalHeight, BOSS_NAME);
+      const root = document.createElement("div");
+      root.innerHTML = svgString;
+      const boss = positions[positions.length - 1];
+      const preBoss = positions[positions.length - 2];
+
+      // 60 has to sit between two real numbers, not just "smaller than
+      // 90": it must exceed every theme's own real shadow offset from
+      // `preBoss` (largest is equationScale's ~48; crossingLinesTheme's
+      // own near-boss shadow is only ~32, since that one stop is always
+      // forced to the narrow angle — see crossingLines.js's own header
+      // comment), and it must stay under ROW_H (140) minus the largest
+      // offset any OTHER row's own shadow can reach, so that row's own
+      // shadow can never spill into this window. That other-row ceiling
+      // is crossingLinesTheme's own wide-angle (62°) shadow, ~66 units
+      // from its own stop — only 74 short of an adjacent row — which is
+      // exactly what made a 90 window wrongly match 3 shadows near
+      // `preBoss` (2 real ones plus one spilled from the row above) at
+      // some real lesson counts before this was tightened to 60.
+      const nearPreBoss = [...root.querySelectorAll("ellipse")].filter((e) => Math.abs(Number(e.getAttribute("cy")) - preBoss.y) < 60);
+      assertEqual(
+        nearPreBoss.length,
+        EXPECTED_SHADOWS_PER_STOP[skillId],
+        `expected "${skillId}"'s own grounding shadow(s) on the stop right before the boss at lesson count ${count}, got ${nearPreBoss.length}`
+      );
+      nearPreBoss.forEach((e) => {
+        const cx = Number(e.getAttribute("cx"));
+        const cy = Number(e.getAttribute("cy"));
+        const rx = Number(e.getAttribute("rx"));
+        const ry = Number(e.getAttribute("ry"));
+        const dist = ellipseMinDistToPoint(cx, cy, rx, ry, boss.x, boss.y);
+        assertTrue(
+          dist > BOSS_R,
+          `expected "${skillId}"'s own grounding shadow at (${cx.toFixed(1)}, ${cy.toFixed(1)}) to clear the boss clearing (radius ${BOSS_R}) at lesson count ${count}, got ${dist.toFixed(1)}`
+        );
+      });
+    }
+  });
+});

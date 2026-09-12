@@ -22,7 +22,16 @@
 // read as its own point rather than vanish under the button — `half`/
 // `rise` clear that radius with several units to spare even at this
 // zone's original, smaller offsets, and sit further out here for extra
-// margin on a narrower phone still.
+// margin on a narrower phone still. Each dot casts its own small flat
+// contact shadow (the same convention windwardBough.js already uses
+// for its own leaning trees) so the two endpoints read as real pinned
+// points on the paper, not flat ink floating with nothing holding them
+// down. Swept against every real lesson count these skills' own
+// question banks produce (not a hand estimate), the closer shadow's
+// own real closest point never comes within 99.0 local units of a boss
+// clearing — comfortably past its own 86-unit radius — so this file
+// carries none of crossingLines.js's/boundaryLine.js's own near-boss
+// risk.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -74,6 +83,8 @@ function renderSlopeStop(p, i) {
   const y1 = rising ? p.y - rise : p.y + rise;
   const vertexY = y0;
   return `
+    <ellipse cx="${x0.toFixed(1)}" cy="${(y0 + 4).toFixed(1)}" rx="12" ry="5" fill="${BOSS_FILL}" opacity="0.35" />
+    <ellipse cx="${x1.toFixed(1)}" cy="${(y1 + 4).toFixed(1)}" rx="12" ry="5" fill="${BOSS_FILL}" opacity="0.35" />
     <line x1="${x0.toFixed(1)}" y1="${vertexY.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${vertexY.toFixed(1)}" stroke="${ACCENT}" stroke-width="2.5" stroke-dasharray="4 5" opacity="0.85" />
     <line x1="${x1.toFixed(1)}" y1="${vertexY.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${ACCENT}" stroke-width="2.5" stroke-dasharray="4 5" opacity="0.85" />
     <line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${INK}" stroke-width="4" stroke-linecap="round" />

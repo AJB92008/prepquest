@@ -24,7 +24,16 @@
 // that one stop; see crossingLines.js's own header comment for the
 // twin of this problem, and tests/slopeFieldsLessonThemes.test.js's own
 // dedicated boss-clearance check (sweeping every real lesson count) for
-// the numbers behind both constants.
+// the numbers behind both constants. Each of the line's own two real
+// endpoints (`a`/`b` — not the DEPTH-scaled wedge corners) casts its
+// own small flat contact shadow, the same windwardBough.js convention
+// every file in this zone now uses, so the boundary reads as pinned to
+// the paper at both ends. `b`'s own shadow is this shape's own closest
+// point to a boss clearing — swept across every real lesson count
+// (not a hand estimate), its own real closest point never comes within
+// 109.0 local units of one, comfortably past its own 86-unit radius —
+// so unlike plottedLine.js's own tight corner this one didn't need a
+// flatter, boss-safe treatment.
 import { COL_W, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -88,6 +97,8 @@ function renderBoundaryStop(p, i, nearBoss) {
   const c = { x: b.x + px, y: b.y + py };
   const d = { x: a.x + px, y: a.y + py };
   return `
+    <ellipse cx="${a.x.toFixed(1)}" cy="${(a.y + 4).toFixed(1)}" rx="12" ry="5" fill="${BOSS_FILL}" opacity="0.35" />
+    <ellipse cx="${b.x.toFixed(1)}" cy="${(b.y + 4).toFixed(1)}" rx="12" ry="5" fill="${BOSS_FILL}" opacity="0.35" />
     <path d="M${a.x.toFixed(1)},${a.y.toFixed(1)} L${b.x.toFixed(1)},${b.y.toFixed(1)} L${c.x.toFixed(1)},${c.y.toFixed(1)} L${d.x.toFixed(1)},${d.y.toFixed(1)} Z" fill="${ACCENT}" opacity="0.4" />
     <line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${INK}" stroke-width="5" stroke-linecap="round" ${strict ? 'stroke-dasharray="7 6"' : ""} />
   `;
