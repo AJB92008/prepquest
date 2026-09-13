@@ -164,7 +164,7 @@ test("curveArcTheme's vertex dot sits exactly on the arc's own real curve (not j
   });
 });
 
-test("rootSystemTheme's exposed root is centered on the same real x as its own tree, genuinely arcs above its own endpoints, and the canopy leans on the alternating side the trunk actually tilts toward", () => {
+test("rootSystemTheme's roots genuinely emerge from their own tree's real base point, taper from a wider base to a narrower tip, aren't mirror-image duplicates of each other, and the canopy leans on the alternating side the trunk actually tilts toward", () => {
   const theme = LESSON_THEMES["satmath-nonlineareq"];
   const count = 6;
   const positions = computeTrail(count, theme.trailBand);
@@ -173,28 +173,68 @@ test("rootSystemTheme's exposed root is centered on the same real x as its own t
   const root = document.createElement("div");
   root.innerHTML = svgString;
   const stops = positions.slice(0, -1);
-  // Excludes the trail path — its own single long "M x y Q x y x y
-  // Q..." string also contains " Q" (see curveArcTheme's own test
-  // above); this zone has no separate arc watermark, so `opacity` alone
-  // (the trail sets one, no per-stop root curve does) is enough here.
-  const roots = [...root.querySelectorAll("path")].filter((el) => (el.getAttribute("d") || "").includes(" Q") && !el.hasAttribute("opacity"));
+  const GROUND_OFFSET = 52;
+  // Each root wedge is a closed "M...Q...L...Q...Z" path with a real
+  // fill (the trail's own path has no fill and stays open, i.e. no "Z";
+  // the dark shading duplicate underneath is excluded via its own
+  // `transform` attribute, and the main wedge is the one left over).
+  const woodPaths = [...root.querySelectorAll("path")].filter((el) => {
+    const d = el.getAttribute("d") || "";
+    return d.includes(" Q") && d.trim().endsWith("Z") && !el.hasAttribute("transform");
+  });
+  const rootWedges = woodPaths.filter((el) => el.getAttribute("fill") === "#8a6238");
   const canopyMains = [...root.querySelectorAll('ellipse[fill="#5c8f42"]')];
+
   stops.forEach((p, i) => {
-    const rootEl = roots.find((el) => {
+    const gx = p.x;
+    const gy = p.y - GROUND_OFFSET;
+    // Every wedge's own base corners (the path's first and last real
+    // points, M...  and the point right before the closing Z) should
+    // straddle the tree's own real (gx,gy) — i.e. the root genuinely
+    // starts at the trunk's own foot, not somewhere else.
+    const treeRoots = rootWedges.filter((el) => {
       const nums = (el.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
-      return Math.abs((nums[0] + nums[4]) / 2 - p.x) < 1; // the curve's own two endpoints straddle p.x exactly
+      const [x0, y0] = nums;
+      const [xLast, yLast] = nums.slice(-2);
+      const baseMidX = (x0 + xLast) / 2;
+      const baseMidY = (y0 + yLast) / 2;
+      return Math.hypot(baseMidX - gx, baseMidY - gy) < 8;
     });
-    assertTrue(!!rootEl, `expected stop ${i}'s own exposed root to be centered on its own real p.x`);
-    const nums = (rootEl.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
-    const [x0, y0, cxCtrl, cyCtrl, x1] = nums;
-    // Genuinely equidistant from p.x on both sides, not just "present".
-    assertTrue(Math.abs(x0 - p.x) - Math.abs(x1 - p.x) < 0.5, `expected stop ${i}'s own root endpoints to sit symmetrically around p.x`);
-    assertTrue(Math.abs(cxCtrl - p.x) < 0.5, `expected stop ${i}'s own root's control point to sit exactly on p.x`);
-    // The curve's own real midpoint (from the quadratic bezier formula,
-    // not assumed) must sit above (smaller y than) its own endpoints —
-    // a genuine arc, not a straight or sagging line.
-    const trueMidY = 0.25 * y0 + 0.5 * cyCtrl + 0.25 * y0;
-    assertTrue(trueMidY < y0, `expected stop ${i}'s own root to genuinely arc above its own endpoints, got midpoint y=${trueMidY.toFixed(1)} vs endpoint y=${y0.toFixed(1)}`);
+    assertEqual(treeRoots.length, 3, `expected stop ${i}'s own tree to have exactly 3 roots emerging from its real base point (${gx.toFixed(1)}, ${gy.toFixed(1)}), got ${treeRoots.length}`);
+
+    treeRoots.forEach((el, rootIdx) => {
+      const nums = (el.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
+      const [x0, y0] = nums;
+      const [xLast, yLast] = nums.slice(-2);
+      // Base half-width (distance between the two base corners, halved)
+      // must be genuinely wider than the tip half-width (the two points
+      // straddling the tip, found as the "L" midpoint) — a real taper,
+      // not a uniform-width stick.
+      const baseHalfW = Math.hypot(x0 - xLast, y0 - yLast) / 2;
+      // The tip corners are the 5th/6th coordinate pairs (after M x0,y0
+      // Q cx,cy tx,ty L ...): indices 4 and 5 in the flat number list.
+      const [txL, tyL] = [nums[4], nums[5]];
+      const [txR, tyR] = [nums[6], nums[7]];
+      const tipHalfW = Math.hypot(txL - txR, tyL - tyR) / 2;
+      assertTrue(baseHalfW > tipHalfW, `expected stop ${i}'s own root #${rootIdx} to taper (base half-width ${baseHalfW.toFixed(1)} > tip half-width ${tipHalfW.toFixed(1)})`);
+      // Every tip must land below the tree's own ground level (buried,
+      // not floating on top of the path).
+      const tipMidY = (tyL + tyR) / 2;
+      assertTrue(tipMidY > gy, `expected stop ${i}'s own root #${rootIdx}'s tip to sink below ground level (gy=${gy.toFixed(1)}), got tip y=${tipMidY.toFixed(1)}`);
+    });
+
+    // Not mirror images of each other: the three roots' own lengths
+    // (base point to tip midpoint) must include at least two genuinely
+    // different values, ruling out a symmetric mirrored pair.
+    const lengths = treeRoots.map((el) => {
+      const nums = (el.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
+      const [x0, y0] = nums;
+      const tipMidX = (nums[4] + nums[6]) / 2;
+      const tipMidY = (nums[5] + nums[7]) / 2;
+      return Math.hypot(tipMidX - x0, tipMidY - y0);
+    });
+    const uniqueLengths = new Set(lengths.map((l) => l.toFixed(0)));
+    assertTrue(uniqueLengths.size > 1, `expected stop ${i}'s own 3 roots to vary in length rather than being uniform/mirrored, got lengths ${lengths.map((l) => l.toFixed(1))}`);
 
     const mirror = i % 2 === 0 ? 1 : -1;
     const canopy = canopyMains.find((c) => Math.abs(Number(c.getAttribute("cx")) - p.x) < 20);

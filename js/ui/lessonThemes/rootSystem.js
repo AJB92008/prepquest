@@ -27,7 +27,8 @@ const GLOW = "#fbf6d6";
 const TRUNK = "#6b4a2e";
 const TRUNK_DARK = "#432c1a";
 const TRUNK_HILITE = "#8f6a42";
-const ROOT_BROWN = "#7a5a38";
+const ROOT_BROWN = "#8a6238";
+const ROOT_DARK = "#4a331d";
 const CANOPY_DARK = "#3c5f2a";
 const CANOPY = "#5c8f42";
 const CANOPY_LIGHT = "#82b45c";
@@ -143,15 +144,15 @@ function renderClutter(positions, totalHeight) {
     .join("");
 }
 
-// One small leaning tree per stop — trunk, canopy, and one curving
-// surface root exposed at the base. Both offsets below were sized
-// against the two real constraints at this row spacing (ROW_H=140):
-// the canopy (a real filled shape, radius CANOPY_R) has to clear the
-// ~38-unit marker radius both against *its own* stop's marker
-// (CANOPY_OFFSET - CANOPY_R > 38) and against the stop one row *above*
-// it, which sits ROW_H away on the other side (ROW_H - CANOPY_OFFSET -
-// CANOPY_R > 38) — CANOPY_OFFSET=75 clears both with a real margin
-// (~22 and ~13 respectively). The ground/root end sits closer to `p`
+// One small leaning tree per stop — trunk, canopy, and a small root
+// system exposed at the base. Both offsets below were sized against
+// the two real constraints at this row spacing (ROW_H=140): the canopy
+// (a real filled shape, radius CANOPY_R) has to clear the ~38-unit
+// marker radius both against *its own* stop's marker (CANOPY_OFFSET -
+// CANOPY_R > 38) and against the stop one row *above* it, which sits
+// ROW_H away on the other side (ROW_H - CANOPY_OFFSET - CANOPY_R > 38)
+// — CANOPY_OFFSET=75 clears both with a real margin (~22 and ~13
+// respectively). The ground/root end sits closer to `p`
 // (GROUND_OFFSET=52, clearing its own marker by ~11 units past the
 // trunk's own half-width) since it only has its own stop to worry
 // about — everything here sits on the fixed "always above p" side, so
@@ -161,7 +162,62 @@ function renderClutter(positions, totalHeight) {
 const CANOPY_OFFSET = 75;
 const CANOPY_R = 15;
 const GROUND_OFFSET = 52;
-const ROOT_HALF_W = 48;
+
+// A tapered root wedge: perpendicular offset from a curved centerline
+// (base -> control -> tip), the same normal-offset technique the trunk
+// itself uses below for its own taper, just applied to a curve instead
+// of a straight line so the root can bulge to one side. The tip's own
+// half-width is near zero so it comes to a real point rather than a
+// flat-capped stick.
+function rootWedgePath(bx, by, cx, cy, tx, ty, baseHalf, tipHalf) {
+  const sdx = cx - bx, sdy = cy - by;
+  const sLen = Math.hypot(sdx, sdy) || 1;
+  const snx = -sdy / sLen, sny = sdx / sLen;
+  const edx = tx - cx, edy = ty - cy;
+  const eLen = Math.hypot(edx, edy) || 1;
+  const enx = -edy / eLen, eny = edx / eLen;
+  const midHalf = (baseHalf + tipHalf) / 2;
+  const mnx = (snx + enx) / 2;
+  const mny = (sny + eny) / 2;
+
+  const baseL = { x: bx + snx * baseHalf, y: by + sny * baseHalf };
+  const baseR = { x: bx - snx * baseHalf, y: by - sny * baseHalf };
+  const ctrlL = { x: cx + mnx * midHalf, y: cy + mny * midHalf };
+  const ctrlR = { x: cx - mnx * midHalf, y: cy - mny * midHalf };
+  const tipL = { x: tx + enx * tipHalf, y: ty + eny * tipHalf };
+  const tipR = { x: tx - enx * tipHalf, y: ty - eny * tipHalf };
+
+  return `M${baseL.x.toFixed(1)},${baseL.y.toFixed(1)} Q${ctrlL.x.toFixed(1)},${ctrlL.y.toFixed(1)} ${tipL.x.toFixed(1)},${tipL.y.toFixed(1)} L${tipR.x.toFixed(1)},${tipR.y.toFixed(1)} Q${ctrlR.x.toFixed(1)},${ctrlR.y.toFixed(1)} ${baseR.x.toFixed(1)},${baseR.y.toFixed(1)} Z`;
+}
+
+// One root, fanning out from the trunk's own base point (bx,by) rather
+// than crossing behind it — dirSign picks which way it flares,
+// angleDeg tilts it down from horizontal so every tip lands below
+// ground level (buried, not floating on top of the path), and bulge
+// bends the curve to one side so it isn't a straight spike. A dark
+// offset duplicate underneath gives it shading against the trunk, a
+// stroked outline separates its edge from both trunk and path, and a
+// soft dark clump at the tip sinks that tip into the ground instead of
+// leaving it a hard-edged line ending in mid-air.
+function renderOneRoot(bx, by, dirSign, angleDeg, length, bulge, baseHalf, tipHalf) {
+  const rad = (angleDeg * Math.PI) / 180;
+  const tx = bx + dirSign * Math.cos(rad) * length;
+  const ty = by + Math.sin(rad) * length;
+  const mx = (bx + tx) / 2;
+  const my = (by + ty) / 2;
+  const ddx = tx - bx, ddy = ty - by;
+  const dLen = Math.hypot(ddx, ddy) || 1;
+  const cx = mx + (-ddy / dLen) * bulge;
+  const cy = my + (ddx / dLen) * bulge;
+  const d = rootWedgePath(bx, by, cx, cy, tx, ty, baseHalf, tipHalf);
+
+  return `
+    <path d="${d}" fill="${ROOT_DARK}" opacity="0.3" transform="translate(1.4 2.2)" />
+    <path d="${d}" fill="${ROOT_BROWN}" stroke="${ROOT_DARK}" stroke-width="1.1" stroke-linejoin="round" />
+    <ellipse cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" rx="${(tipHalf + 3.5).toFixed(1)}" ry="${(tipHalf + 1.8).toFixed(1)}" fill="${ROOT_DARK}" opacity="0.35" />
+  `;
+}
+
 function renderRootStop(p, i) {
   const mirror = i % 2 === 0 ? 1 : -1;
   const gx = p.x;
@@ -169,16 +225,18 @@ function renderRootStop(p, i) {
   const tpx = p.x + mirror * 9;
   const tpy = p.y - CANOPY_OFFSET;
 
-  // Root curve: spans the ground level, dipping a little below it at
-  // the tips and arcing back up above it at the middle — the same
-  // "real, hand-checked, then swept" quadratic-bezier construction this
-  // session has used throughout, just with fresh numbers for this
-  // file's own new anchor points.
-  const rx0 = p.x - ROOT_HALF_W;
-  const rx1 = p.x + ROOT_HALF_W;
-  const rootBaseY = gy + 9;
-  const rootPeakY = gy - 20;
-  const rootCtrlY = 2 * rootPeakY - rootBaseY;
+  // Three roots fanning out from the trunk's own base point (gx,gy): a
+  // main root on the same side the trunk leans, a shorter counter-root
+  // on the other side, and a small steep third root. Every length,
+  // angle, and curve-bulge is jittered off `i` (deterministic, no
+  // Math.random — same seeded-jitter convention this file already uses
+  // for grass/leaf rotation) so no two trees repeat the same shape and
+  // none of them are mirror images of each other.
+  const roots = [
+    renderOneRoot(gx, gy, mirror, 14 + ((i * 53) % 16), 44 + ((i * 41) % 16), 6 - ((i * 37) % 12), 5, 1),
+    renderOneRoot(gx, gy, -mirror, 26 + ((i * 29) % 18), 32 + ((i * 17) % 12), -5 + ((i * 61) % 12), 4, 0.8),
+    renderOneRoot(gx, gy, i % 3 === 0 ? mirror : -mirror, 58 + ((i * 19) % 14), 19 + ((i * 23) % 9), 3 - ((i * 13) % 6), 3.2, 0.8),
+  ].join("");
 
   // Trunk as a tapered quad (wide at the ground end, narrow at the
   // canopy end) rather than a plain stroked line, plus a thin highlight
@@ -205,7 +263,7 @@ function renderRootStop(p, i) {
 
   return `
     <ellipse cx="${gx.toFixed(1)}" cy="${(gy + 5).toFixed(1)}" rx="13" ry="4.5" fill="${TRUNK_DARK}" opacity="0.3" />
-    <path d="M${rx0.toFixed(1)},${rootBaseY.toFixed(1)} Q${p.x.toFixed(1)},${rootCtrlY.toFixed(1)} ${rx1.toFixed(1)},${rootBaseY.toFixed(1)}" fill="none" stroke="${ROOT_BROWN}" stroke-width="4" stroke-linecap="round" />
+    ${roots}
     <path d="${trunkPath}" fill="${TRUNK}" stroke="${TRUNK_DARK}" stroke-width="1.2" />
     <line x1="${hiliteX0.toFixed(1)}" y1="${hiliteY0.toFixed(1)}" x2="${hiliteX1.toFixed(1)}" y2="${hiliteY1.toFixed(1)}" stroke="${TRUNK_HILITE}" stroke-width="1.6" stroke-linecap="round" opacity="0.8" />
     ${canopy}
