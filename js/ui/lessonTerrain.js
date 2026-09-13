@@ -109,6 +109,32 @@ export function renderTrailPath(positions) {
     .join(" ");
 }
 
+// Shortest distance from a point to the trail itself — every theme's
+// own ground clutter (pebbles, grass, cacti, whatever) needs this to
+// avoid landing on top of the path, not just on top of a lesson marker
+// or the boss clearing. Approximates the trail's own smooth quadratic
+// curve (renderTrailPath) as a straight polyline through the same
+// waypoints: since each curve segment's own control point sits directly
+// between its two endpoints (see renderTrailPath below), the real curve
+// never strays far outside that segment's own straight-line bounding
+// box, so this stays a safe, conservative stand-in without needing to
+// solve the actual bezier-to-point distance.
+export function distanceToTrail(x, y, positions) {
+  let min = Infinity;
+  for (let i = 0; i < positions.length - 1; i++) {
+    const a = positions[i];
+    const b = positions[i + 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy || 1;
+    const t = clamp(((x - a.x) * dx + (y - a.y) * dy) / lenSq, 0, 1);
+    const px = a.x + t * dx;
+    const py = a.y + t * dy;
+    min = Math.min(min, Math.hypot(x - px, y - py));
+  }
+  return min;
+}
+
 // Finds whichever waypoint is closest to a given height — the building
 // block behind "place this feature on whichever side of the trail it
 // isn't using right there" that both Idiom Instinct's hills and Phrase

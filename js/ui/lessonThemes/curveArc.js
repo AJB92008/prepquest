@@ -13,7 +13,7 @@
 // with its own vertex marked — alternating a hill (opens down, vertex
 // on top) and a valley (opens up, vertex lower) stop to stop, echoing
 // the rolling terrain itself rather than one fixed shape repeated.
-import { COL_W, renderTrailPath } from "../lessonTerrain.js";
+import { COL_W, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
 const PAPER_TOP = "#f2faf6";
@@ -115,6 +115,7 @@ function renderArcWatermark(totalHeight) {
 // real stop or the boss clearing rather than trusting placement math
 // alone to stay clear (same guard rootSystem.js's own clutter uses).
 const CLUTTER_SPACING = 150;
+const PATH_CLEARANCE = 20;
 function renderPebble(x, y, scale) {
   const rx = 6 * scale;
   return `
@@ -148,7 +149,11 @@ function renderClutter(positions, totalHeight) {
     const y = ((i + 0.5) / count) * totalHeight;
     const x = BAND.min + 22 + ((i * 83) % (BAND.max - BAND.min - 44));
     return { i, x, y };
-  }).filter(({ x, y }) => positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)));
+  }).filter(
+    ({ x, y }) =>
+      positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)) &&
+      distanceToTrail(x, y, positions) >= PATH_CLEARANCE
+  );
 
   return items
     .map(({ i, x, y }) => {

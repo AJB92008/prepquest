@@ -10,7 +10,7 @@
 // whole composition reaches from `p` (see canyonRail.js's own header
 // comment on why a fixed vertical band, not an alternating one, is what
 // keeps a new theme's own marker/boss clearance safe from the start).
-import { COL_W, renderTrailPath } from "../lessonTerrain.js";
+import { COL_W, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
 
@@ -78,6 +78,7 @@ function renderGlows(totalHeight) {
 }
 
 const CLUTTER_SPACING = 150;
+const PATH_CLEARANCE = 20;
 function renderPebble(x, y, scale) {
   const rx = 6 * scale;
   return `
@@ -104,7 +105,11 @@ function renderClutter(positions, totalHeight) {
     const y = ((i + 0.5) / count) * totalHeight;
     const x = BAND.min + 20 + ((i * 79) % (BAND.max - BAND.min - 40));
     return { i, x, y };
-  }).filter(({ x, y }) => positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)));
+  }).filter(
+    ({ x, y }) =>
+      positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)) &&
+      distanceToTrail(x, y, positions) >= PATH_CLEARANCE
+  );
 
   return items
     .map(({ i, x, y }) => {

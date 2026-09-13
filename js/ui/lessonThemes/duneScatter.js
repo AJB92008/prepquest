@@ -15,7 +15,7 @@
 // across them — alternating a rising and falling trend stop to stop,
 // the same "alternate the one real variable" instinct curveArc.js's own
 // hill/valley already uses. The boss clearing is a literal desert oasis.
-import { COL_W, renderTrailPath } from "../lessonTerrain.js";
+import { COL_W, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
 
@@ -107,6 +107,7 @@ function renderGlows(totalHeight) {
 // skipped outright wherever it would land on top of a real stop or the
 // boss clearing (same guard rootSystem.js's own clutter uses).
 const CLUTTER_SPACING = 150;
+const PATH_CLEARANCE = 20;
 function renderCactus(x, y, scale) {
   const h = 22 * scale;
   const w = 6 * scale;
@@ -143,7 +144,11 @@ function renderClutter(positions, totalHeight) {
     const y = ((i + 0.5) / count) * totalHeight;
     const x = BAND.min + 22 + ((i * 83) % (BAND.max - BAND.min - 44));
     return { i, x, y };
-  }).filter(({ x, y }) => positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)));
+  }).filter(
+    ({ x, y }) =>
+      positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)) &&
+      distanceToTrail(x, y, positions) >= PATH_CLEARANCE
+  );
 
   return items
     .map(({ i, x, y }) => {

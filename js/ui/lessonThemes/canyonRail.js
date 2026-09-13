@@ -8,7 +8,7 @@
 // every stop parks a small ore cart carrying two colors of ore in a
 // real fixed ratio — a literal, countable ratio rather than an abstract
 // diagram. The boss clearing is the canyon's own mine entrance.
-import { COL_W, renderTrailPath } from "../lessonTerrain.js";
+import { COL_W, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
 
@@ -84,6 +84,7 @@ function renderGlows(totalHeight) {
 // skipped near any real stop or the boss clearing (same guard every
 // Scatter Banks file uses).
 const CLUTTER_SPACING = 150;
+const PATH_CLEARANCE = 20;
 function renderRockPile(x, y, scale) {
   const r = 6 * scale;
   return `
@@ -111,7 +112,11 @@ function renderClutter(positions, totalHeight) {
     const y = ((i + 0.5) / count) * totalHeight;
     const x = BAND.min + 20 + ((i * 89) % (BAND.max - BAND.min - 40));
     return { i, x, y };
-  }).filter(({ x, y }) => positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)));
+  }).filter(
+    ({ x, y }) =>
+      positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === bossIdx ? 100 : 55)) &&
+      distanceToTrail(x, y, positions) >= PATH_CLEARANCE
+  );
 
   return items
     .map(({ i, x, y }) => {

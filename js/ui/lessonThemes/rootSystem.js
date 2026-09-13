@@ -15,7 +15,7 @@
 // ground clutter — mushrooms, pebbles, grass tufts, fallen leaves, each
 // its own shape, not a repeated dot) and a wider, two-tone dirt trail
 // instead of a thin dashed line.
-import { COL_W, clamp, renderTrailPath } from "../lessonTerrain.js";
+import { COL_W, clamp, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
 
@@ -88,6 +88,7 @@ function renderGlows(totalHeight) {
 // outright wherever it would land on top of any real position rather
 // than trusting its own placement math never gets that close.
 const CLUTTER_SPACING = 150;
+const PATH_CLEARANCE = 20;
 function renderMushroom(x, y, scale, seed) {
   const capR = 7 * scale;
   return `
@@ -128,8 +129,10 @@ function renderClutter(positions, totalHeight) {
     const y = ((i + 0.5) / count) * totalHeight;
     const x = clamp(BAND.min + 22 + ((i * 83) % (BAND.max - BAND.min - 44)), BAND.min + 12, BAND.max - 12);
     return { i, x, y };
-  }).filter(({ x, y }) =>
-    positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === positions.length - 1 ? 98 : 50))
+  }).filter(
+    ({ x, y }) =>
+      positions.every((p, idx) => Math.hypot(x - p.x, y - p.y) >= (idx === positions.length - 1 ? 98 : 50)) &&
+      distanceToTrail(x, y, positions) >= PATH_CLEARANCE
   );
 
   return items
