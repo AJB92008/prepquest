@@ -10,11 +10,20 @@
 // ties its own 3 skills together — see curveArc.js's own header
 // comment for why that shared-backdrop approach read poorly for 2 of
 // Curve Reach's own 3 skills once their own content didn't fit it).
-// Scatter Scout is about reading a scatterplot's own trend, so every
-// stop plants a real scatter of stones with a driftwood trend line laid
-// across them — alternating a rising and falling trend stop to stop,
-// the same "alternate the one real variable" instinct curveArc.js's own
-// hill/valley already uses. The boss clearing is a literal desert oasis.
+//
+// Full visual cleanup per direct feedback: the walkable trail used to
+// carry a dashed cream center-stripe that read as a literal highway,
+// competing with the per-stop scatter-of-stones-and-trend-line for
+// "which one is the actual route" — the trail is now the one clear
+// route (a plain two-tone dirt trail, no center dash, plus a soft teal
+// underglow so it still reads as special against the sand) and the
+// scatter-of-stones is demoted to quiet background scenery: drawn
+// *behind* the trail, at reduced opacity, and recolored from a brown
+// "twig" to a muted teal mineral-vein streak (a dried-up trace of the
+// oasis water below) rather than a second foreground line competing
+// with the path. The teal itself is the zone's one secondary accent
+// color, tying the boss's own oasis into the rest of the scene instead
+// of leaving the whole palette flat brown/tan.
 import { COL_W, distanceToTrail, renderTrailPath } from "../lessonTerrain.js";
 
 const BAND = { min: 90, max: COL_W - 90 };
@@ -23,12 +32,13 @@ const SAND_TOP = "#fbe9c9";
 const SAND_BOTTOM = "#dc9a52";
 const MESA_FILL = "#c9754a";
 const GLOW = "#fff3d6";
+const GLOW_TEAL = "#cdeee7";
 
 const STONE = "#a8927a";
 const STONE_DARK = "#6b5642";
 const STONE_HILITE = "#d8c7ac";
-const TWIG = "#7a5330";
-const TWIG_DARK = "#4a3218";
+const TREND = "#4a8a86";
+const TREND_DARK = "#2e5f5c";
 const CACTUS = "#5c8a52";
 const CACTUS_DARK = "#3d6238";
 const BONE = "#e8dcc0";
@@ -37,10 +47,12 @@ const TUMBLEWEED = "#8a7248";
 
 // The walkable trail's own palette — a neutral packed-dirt brown/tan,
 // distinct from both the warm orange sand gradient and the terracotta
-// mesa silhouettes so it still reads as "the path" against either.
+// mesa silhouettes so it still reads as "the path" against either. No
+// dashed center stripe (that read as a literal highway) — a soft teal
+// underglow (this zone's own secondary accent, tied to the oasis) gives
+// it presence instead.
 const PATH_BASE = "#5c4630";
 const PATH_MID = "#9c7a4e";
-const PATH_HILITE = "#e0c48a";
 
 const OASIS_FILL = "#2f7d78";
 const OASIS_RING = "#8fd9c4";
@@ -55,6 +67,10 @@ function defs() {
       <radialGradient id="duneScatterGlow" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="${GLOW}" stop-opacity="0.55" />
         <stop offset="100%" stop-color="${GLOW}" stop-opacity="0" />
+      </radialGradient>
+      <radialGradient id="duneScatterGlowTeal" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="${GLOW_TEAL}" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="${GLOW_TEAL}" stop-opacity="0" />
       </radialGradient>
     </defs>
   `;
@@ -84,12 +100,15 @@ function renderMesas(totalHeight) {
 
 // Soft sun-glow patches standing in for desert heat haze — same role
 // (and same "big enough it needs no per-stop clearance check")
-// rootSystem.js's own dappled-light spots play for its forest.
+// rootSystem.js's own dappled-light spots play for its forest. One in
+// three is tinted with this zone's own teal accent instead of warm
+// cream, a faint hint of the oasis' own presence before the trail
+// actually reaches it.
 const GLOW_SPACING = 480;
 const GLOW_CYCLE = [
-  { fx: 0.25, r: 170 },
-  { fx: 0.75, r: 150 },
-  { fx: 0.5, r: 190 },
+  { fx: 0.25, r: 170, teal: false },
+  { fx: 0.75, r: 150, teal: true },
+  { fx: 0.5, r: 190, teal: false },
 ];
 function renderGlows(totalHeight) {
   const count = Math.max(GLOW_CYCLE.length, Math.round(totalHeight / GLOW_SPACING));
@@ -97,7 +116,8 @@ function renderGlows(totalHeight) {
     const g = GLOW_CYCLE[i % GLOW_CYCLE.length];
     const cx = g.fx * COL_W;
     const cy = ((i + 0.5) / count) * totalHeight;
-    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${g.r}" fill="url(#duneScatterGlow)" />`;
+    const fill = g.teal ? "url(#duneScatterGlowTeal)" : "url(#duneScatterGlow)";
+    return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${g.r}" fill="${fill}" />`;
   }).join("");
 }
 
@@ -203,18 +223,22 @@ function renderScatterStop(p, i) {
   }).join("");
 
   return `
-    <path d="M${x0.toFixed(1)},${leftY.toFixed(1)} L${x1.toFixed(1)},${rightY.toFixed(1)}" stroke="${TWIG}" stroke-width="3" stroke-linecap="round" opacity="1" />
-    <path d="M${x0.toFixed(1)},${leftY.toFixed(1)} L${x1.toFixed(1)},${rightY.toFixed(1)}" stroke="${TWIG_DARK}" stroke-width="1" stroke-linecap="round" opacity="0.5" />
+    <path d="M${x0.toFixed(1)},${leftY.toFixed(1)} L${x1.toFixed(1)},${rightY.toFixed(1)}" stroke="${TREND}" stroke-width="3" stroke-linecap="round" opacity="0.6" />
+    <path d="M${x0.toFixed(1)},${leftY.toFixed(1)} L${x1.toFixed(1)},${rightY.toFixed(1)}" stroke="${TREND_DARK}" stroke-width="1" stroke-linecap="round" opacity="0.35" />
     ${stones}
   `;
 }
 
+// Wrapped at reduced opacity as one group — this is background scenery
+// now (a trace of the trend the trail itself is walking), not a second
+// foreground feature meant to compete with the route for attention.
 function renderScatters(positions) {
   const bossIndex = positions.length - 1;
-  return positions
+  const stops = positions
     .filter((_, i) => i !== bossIndex)
     .map((p, i) => renderScatterStop(p, i))
     .join("");
+  return `<g opacity="0.55">${stops}</g>`;
 }
 
 function renderScene(positions, totalHeight, bossName) {
@@ -224,17 +248,17 @@ function renderScene(positions, totalHeight, bossName) {
 
   return `
     <svg viewBox="0 0 ${COL_W} ${totalHeight}" xmlns="http://www.w3.org/2000/svg" class="lesson-terrain-svg" role="img"
-      aria-label="A sun-baked corner of Function Fields' Scatter Banks: a scatter of stones with a driftwood trend line at every stop, alternating a rising and falling scatter, past cacti, sun-bleached stones, and tumbleweed, up to ${bossName}'s own desert oasis">
+      aria-label="A sun-baked corner of Function Fields' Scatter Banks: a clear dirt trail with a teal glow, past cacti, sun-bleached stones, tumbleweed, and a faint scatter of stones tracing a trend in the background at every stop, up to ${bossName}'s own desert oasis">
       ${defs()}
       <rect x="0" y="0" width="${COL_W}" height="${totalHeight}" fill="url(#duneScatterSand)" />
       ${renderMesas(totalHeight)}
       ${renderGlows(totalHeight)}
       ${renderClutter(positions, totalHeight)}
+      ${renderScatters(positions)}
       ${bossClearing}
-      <path d="${trailD}" stroke="${PATH_BASE}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.45" />
+      <path d="${trailD}" stroke="${OASIS_RING}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.22" />
+      <path d="${trailD}" stroke="${PATH_BASE}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5" />
       <path d="${trailD}" stroke="${PATH_MID}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="1" />
-      <path d="${trailD}" stroke="${PATH_HILITE}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 9" fill="none" opacity="0.85" />
-      <g>${renderScatters(positions)}</g>
     </svg>
   `;
 }
