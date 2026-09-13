@@ -426,6 +426,13 @@ import { boundaryLineTheme } from "./lessonThemes/boundaryLine.js";
 import { curveArcTheme } from "./lessonThemes/curveArc.js";
 import { rootSystemTheme } from "./lessonThemes/rootSystem.js";
 import { assemblyLineTheme } from "./lessonThemes/assemblyLine.js";
+import { duneScatterTheme } from "./lessonThemes/duneScatter.js";
+import { canyonRailTheme } from "./lessonThemes/canyonRail.js";
+import { canteenGaugeTheme } from "./lessonThemes/canteenGauge.js";
+import { duneHistogramTheme } from "./lessonThemes/duneHistogram.js";
+import { desertGambitTheme } from "./lessonThemes/desertGambit.js";
+import { prospectorsPanTheme } from "./lessonThemes/prospectorsPan.js";
+import { claimStakesTheme } from "./lessonThemes/claimStakes.js";
 
 export const LESSON_THEMES = {
   "en-idioms": plainsTheme,
@@ -512,6 +519,13 @@ export const LESSON_THEMES = {
   "satmath-nonlinearfunc": curveArcTheme,
   "satmath-nonlineareq": rootSystemTheme,
   "satmath-equivexpr": assemblyLineTheme,
+  "satmath-twovardata": duneScatterTheme,
+  "satmath-ratios": canyonRailTheme,
+  "satmath-percentages": canteenGaugeTheme,
+  "satmath-onevardata": duneHistogramTheme,
+  "satmath-probability": desertGambitTheme,
+  "satmath-inference": prospectorsPanTheme,
+  "satmath-statclaims": claimStakesTheme,
 };
 
 export function renderThemedLessonPath(root, navigate, params) {
