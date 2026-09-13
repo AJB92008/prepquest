@@ -65,16 +65,34 @@ function renderRiverBanks(totalHeight) {
 // A couple of soft hill mounds within the land band, each placed on the
 // opposite side of the trail from wherever the trail happens to be at
 // that height — so the trail always reads as skirting around the near
-// edge of one, rather than the two overlapping by coincidence.
+// edge of one, rather than the two overlapping by coincidence. These
+// fixed fractions of totalHeight (0.2/0.48/0.76) only ever crowd a hill
+// onto a real lesson marker or the boss's own clearing when totalHeight
+// itself is small enough for a fraction to land within the hill's own
+// radius of one of `positions` — every real skill's own lesson count is
+// 20+ (see js/data/questions/index.js's getLessonCount), so this never
+// actually happens today, but getLessonCount's own fallback for an
+// unregistered skill ID is 1, and nothing stops a future bank-size
+// override from shrinking one — so skip (rather than render) any hill
+// that would land on top of any position, the same guard
+// assemblyLine.js's renderProps uses for its own background props.
+// Using the boss's own larger 86-unit clearance radius for every
+// position (not just the boss) is deliberately generous — a real lesson
+// marker's own footprint only needs ~38 units — but it's a simple,
+// always-safe bound for both, and this only ever matters in a
+// degenerate, currently-unreachable scene.
 function computeHills(positions, totalHeight) {
   const mid = (LAND_BAND.min + LAND_BAND.max) / 2;
-  return [0.2, 0.48, 0.76].map((f, i) => {
-    const hy = f * totalHeight;
-    const nearest = nearestPosition(positions, hy);
-    const side = nearest.x < mid ? 1 : -1;
-    const hx = clamp(mid + side * (LAND_BAND.max - LAND_BAND.min) * 0.32, LAND_BAND.min + 55, LAND_BAND.max - 15);
-    return { x: hx, y: hy, r: 90 + (i % 2) * 18 };
-  });
+  return [0.2, 0.48, 0.76]
+    .map((f, i) => {
+      const hy = f * totalHeight;
+      const nearest = nearestPosition(positions, hy);
+      const side = nearest.x < mid ? 1 : -1;
+      const hx = clamp(mid + side * (LAND_BAND.max - LAND_BAND.min) * 0.32, LAND_BAND.min + 55, LAND_BAND.max - 15);
+      const r = 90 + (i % 2) * 18;
+      return { x: hx, y: hy, r };
+    })
+    .filter((hill) => positions.every((p) => Math.hypot(hill.x - p.x, hill.y - p.y) >= 86 + hill.r));
 }
 
 const DECOR_EMOJI = ["📖", "🔖", "🖋️", "📜", "🦉", "🔍"];
@@ -113,6 +131,7 @@ const HILL_SHADES = [
 ];
 
 function renderScene(positions, totalHeight, bossName) {
+  const last = positions[positions.length - 1];
   const hills = computeHills(positions, totalHeight)
     .map(({ x, y, r }, i) => {
       const [base, highlight] = HILL_SHADES[i % HILL_SHADES.length];
@@ -125,7 +144,6 @@ function renderScene(positions, totalHeight, bossName) {
       `;
     })
     .join("");
-  const last = positions[positions.length - 1];
   const bossClearing = `<circle cx="${last.x}" cy="${last.y}" r="86" fill="#efe4cf" stroke="#c9a668" stroke-width="4" />`;
 
   return `

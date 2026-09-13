@@ -155,13 +155,25 @@ function computeScree(positions, totalHeight) {
   }));
 }
 
+// Scree is spaced by height-interval and positioned off whichever
+// position is nearest at that height, not off any specific stop — so it
+// carries no awareness of the boss's own 86-unit clearance or a real
+// lesson marker's own ~38-unit radius, and can land on either at a
+// small enough totalHeight. Every real skill's own lesson count is 20+
+// (see js/data/questions/index.js's getLessonCount) so this never
+// actually happens today, but nothing stops a future bank-size override
+// from shrinking one — so skip (rather than render) any scree that
+// would land on top of any position, the same guard plains.js's own
+// computeHills uses.
 function renderScree(positions, totalHeight) {
   return computeScree(positions, totalHeight)
     .map(({ y, r }) => {
       const nearest = nearestPosition(positions, y);
       const x = clamp(nearest.x - (55 + r), BAND.min + 15, BAND.max - 15);
-      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="#9c8064" stroke="${WALL_STROKE}" stroke-width="1.5" opacity="0.75" />`;
+      return { x, y, r };
     })
+    .filter(({ x, y, r }) => positions.every((p) => Math.hypot(x - p.x, y - p.y) >= 86 + r))
+    .map(({ x, y, r }) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="#9c8064" stroke="${WALL_STROKE}" stroke-width="1.5" opacity="0.75" />`)
     .join("");
 }
 

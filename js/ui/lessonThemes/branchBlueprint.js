@@ -85,8 +85,14 @@ function renderCornerMark(x, y) {
   `;
 }
 
+// top's own offset from `y` (here, always a real lesson position) has
+// to clear the canopy's own top circle (r=15) past the real marker's
+// ~38-unit radius: with the canopy centered at `top-4`, the offset needs
+// to exceed 15+37.8 ≈ 52.8 — the previous value of 32 (real clearance
+// only ~21) put a real chunk of that circle under the button at every
+// single stop. 60 gives a real ~7-unit margin over the threshold.
 function renderTreeWithSkeleton(x, y) {
-  const top = y - 32;
+  const top = y - 60;
   return `
     <line x1="${x}" y1="${y}" x2="${x}" y2="${top.toFixed(1)}" stroke="${BARK}" stroke-width="5" stroke-linecap="round" />
     ${renderSkeleton(x, top)}

@@ -116,11 +116,25 @@ function renderVsMark(x, y) {
 // Every other stop, not every single one — one placard pair at every
 // stop plus the starfield behind them read as visually dense. The boss
 // index is already excluded by `slice(0, -1)` before this filter runs.
+// leftX/rightX/the VS mark between them are fixed at the band's own
+// midpoint rather than tracking `p.x` — deliberately, so the row reads
+// as a placard flanking the *path's own corridor*, not a composition
+// that hugs wherever the trail's own sine-wave wander happens to put
+// it. But that same fixed-midpoint placement means the real trail
+// (which wanders across the whole band, see computeTrail's own sine
+// wave) periodically swings back close to `mid` — and when it does, the
+// VS mark (a real r=15 circle) can land almost exactly on that stop's
+// own real lesson marker. Rather than move the composition (which would
+// undermine the whole point of it reading as flanking the corridor, not
+// following the trail), skip it outright on the rare stop where the
+// trail's own x is too close to `mid` for the VS mark plus a real
+// safety margin to clear the marker's own ~38-unit radius.
 function computeThrowdowns(positions) {
   const mid = (BAND.min + BAND.max) / 2;
   return positions
     .slice(0, -1)
     .filter((_, i) => i % 2 === 0)
+    .filter((p) => Math.abs(p.x - mid) >= 90)
     .map((p, i) => ({
       leftX: clamp(mid - 58, BAND.min + 25, mid - 34),
       rightX: clamp(mid + 58, mid + 34, BAND.max - 25),

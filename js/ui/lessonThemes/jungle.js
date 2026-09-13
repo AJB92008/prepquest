@@ -13,6 +13,19 @@ const FAUNA_EMOJI = ["🦜", "🐒", "🐍", "🐸", "🦋", "🕷️"];
 const FLORA_EMOJI = ["🌴", "🌺", "🍄", "🪵"];
 const AMBIENT_EMOJI = ["🍃", "🌿", "🍄", "🕸️"];
 
+// Spaced by height-interval (TREE_COUNT trees evenly across totalHeight)
+// rather than a fixed real spacing, so at a small enough totalHeight a
+// tree's own canopy (its widest single canopy circle reaches up to
+// ~1.1*r past center — see renderTree's own three offset circles) can
+// land on top of a real lesson marker or the boss's own clearing. Every
+// real skill's own lesson count is 20+ (see
+// js/data/questions/index.js's getLessonCount) so totalHeight never
+// actually gets this small today, but getLessonCount's own fallback for
+// an unregistered skill ID is 1 — so skip (rather than render) any tree
+// that would land on top of any position, the same guard plains.js's
+// own computeHills uses (including its choice to use the boss's own
+// larger 86-unit radius for every position, not just the boss, as a
+// simple always-safe bound for both).
 function computeTrees(positions, totalHeight) {
   const mid = (BAND.min + BAND.max) / 2;
   return Array.from({ length: TREE_COUNT }, (_, i) => {
@@ -25,7 +38,7 @@ function computeTrees(positions, totalHeight) {
     const palette = i % CANOPY_PALETTES.length;
     const jitter = ((i * 5) % 7) / 6 - 0.5;
     return { x: tx, y: hy, r, palette, jitter };
-  });
+  }).filter((tree) => positions.every((p) => Math.hypot(tree.x - p.x, tree.y - p.y) >= 86 + tree.r * 1.2 + 10));
 }
 
 // A different canopy palette per tree (not always the same three
@@ -80,8 +93,8 @@ function renderAmbient(totalHeight) {
 }
 
 function renderScene(positions, totalHeight, bossName) {
-  const trees = computeTrees(positions, totalHeight).map(renderTree).join("");
   const last = positions[positions.length - 1];
+  const trees = computeTrees(positions, totalHeight).map(renderTree).join("");
   const bossClearing = `
     <circle cx="${last.x}" cy="${last.y}" r="90" fill="#dfe0c4" stroke="#7d8f5c" stroke-width="4" />
     <text x="${last.x - 72}" y="${last.y - 58}" font-size="26">🌿</text>
