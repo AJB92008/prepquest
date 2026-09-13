@@ -320,9 +320,11 @@
 // own first themes in that same family read poorly enough on their own
 // that both were replaced outright with their own unrelated, literal
 // environments instead of another Rolling Curve variant: Root Finder is
-// now underground, a taproot and a curving lateral root forking at one
-// exact point at every stop, a small green shoot marking the real
-// solution there; Expression Rebuilder is now a factory, a real
+// now a sunlit forest floor, a small leaning tree at every stop with a
+// real curving root exposed at its own base (the same real "two paths
+// forking at one exact point" structure the diagram version had, now an
+// actual tree instead of an abstract line-meets-curve); Expression
+// Rebuilder is now a factory, a real
 // expression plate riding a short conveyor into a gear at every stop
 // and coming out the other side as its own genuine algebraic
 // equivalent (still checked as a real identity, not made-up text — see

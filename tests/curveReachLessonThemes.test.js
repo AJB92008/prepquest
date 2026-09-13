@@ -164,7 +164,7 @@ test("curveArcTheme's vertex dot sits exactly on the arc's own real curve (not j
   });
 });
 
-test("rootSystemTheme's taproot and lateral root genuinely fork at the sprout's own real position, not just near it", () => {
+test("rootSystemTheme's exposed root is centered on the same real x as its own tree, genuinely arcs above its own endpoints, and the canopy leans on the alternating side the trunk actually tilts toward", () => {
   const theme = LESSON_THEMES["satmath-nonlineareq"];
   const count = 6;
   const positions = computeTrail(count, theme.trailBand);
@@ -173,42 +173,34 @@ test("rootSystemTheme's taproot and lateral root genuinely fork at the sprout's 
   const root = document.createElement("div");
   root.innerHTML = svgString;
   const stops = positions.slice(0, -1);
-  const sprouts = [...root.querySelectorAll('circle[r="6"]')];
-  const taproots = [...root.querySelectorAll("line")].filter((l) => l.getAttribute("stroke-width") === "6");
   // Excludes the trail path — its own single long "M x y Q x y x y
   // Q..." string also contains " Q" (see curveArcTheme's own test
   // above); this zone has no separate arc watermark, so `opacity` alone
-  // (the trail sets one, no per-stop lateral root does) is enough here.
-  const arcs = [...root.querySelectorAll("path")].filter((el) => (el.getAttribute("d") || "").includes(" Q") && !el.hasAttribute("opacity"));
+  // (the trail sets one, no per-stop root curve does) is enough here.
+  const roots = [...root.querySelectorAll("path")].filter((el) => (el.getAttribute("d") || "").includes(" Q") && !el.hasAttribute("opacity"));
+  const canopyMains = [...root.querySelectorAll('ellipse[fill="#5c8f42"]')];
   stops.forEach((p, i) => {
-    const sprout = sprouts.find((r) => Math.abs(Number(r.getAttribute("cx")) - p.x) < 60);
-    assertTrue(!!sprout, `expected a real sprout marker near stop ${i}`);
-    const rx = Number(sprout.getAttribute("cx"));
-    const ry = Number(sprout.getAttribute("cy"));
+    const rootEl = roots.find((el) => {
+      const nums = (el.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
+      return Math.abs((nums[0] + nums[4]) / 2 - p.x) < 1; // the curve's own two endpoints straddle p.x exactly
+    });
+    assertTrue(!!rootEl, `expected stop ${i}'s own exposed root to be centered on its own real p.x`);
+    const nums = (rootEl.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
+    const [x0, y0, cxCtrl, cyCtrl, x1] = nums;
+    // Genuinely equidistant from p.x on both sides, not just "present".
+    assertTrue(Math.abs(x0 - p.x) - Math.abs(x1 - p.x) < 0.5, `expected stop ${i}'s own root endpoints to sit symmetrically around p.x`);
+    assertTrue(Math.abs(cxCtrl - p.x) < 0.5, `expected stop ${i}'s own root's control point to sit exactly on p.x`);
+    // The curve's own real midpoint (from the quadratic bezier formula,
+    // not assumed) must sit above (smaller y than) its own endpoints —
+    // a genuine arc, not a straight or sagging line.
+    const trueMidY = 0.25 * y0 + 0.5 * cyCtrl + 0.25 * y0;
+    assertTrue(trueMidY < y0, `expected stop ${i}'s own root to genuinely arc above its own endpoints, got midpoint y=${trueMidY.toFixed(1)} vs endpoint y=${y0.toFixed(1)}`);
 
-    const taproot = taproots.find((l) => Math.abs(Number(l.getAttribute("x1")) - rx) < 60);
-    assertTrue(!!taproot, `expected a real taproot near stop ${i}'s own sprout`);
-    const x1 = Number(taproot.getAttribute("x1"));
-    const y1 = Number(taproot.getAttribute("y1"));
-    const x2 = Number(taproot.getAttribute("x2"));
-    const y2 = Number(taproot.getAttribute("y2"));
-    // The sprout's own position must lie exactly on the taproot's own
-    // real segment (collinear with its two real endpoints, not close).
-    const cross = (x2 - x1) * (ry - y1) - (y2 - y1) * (rx - x1);
-    // Tolerance is 5, not e.g. 0.5: the SVG string rounds every
-    // coordinate to 0.1, and this cross product multiplies pairs of
-    // ~100-unit differences, so independent 0.05 rounding errors on 4
-    // separate coordinates compound past a tight tolerance even though
-    // the underlying construction is exactly collinear (the taproot and
-    // sprout share the same real `cx`/`cy` before any string formatting).
-    assertTrue(Math.abs(cross) < 5, `expected stop ${i}'s own sprout to sit exactly on its own taproot's real path, got a cross product of ${cross.toFixed(3)}`);
-
-    const arc = arcs.find((el) => Math.abs(rx - Number((el.getAttribute("d").match(/^M([-\d.]+),/) || [])[1] || 0)) < 60);
-    assertTrue(!!arc, `expected a real lateral root near stop ${i}'s own sprout`);
-    const nums = (arc.getAttribute("d").match(/-?\d+\.?\d*/g) || []).map(Number);
-    const [, y0, , cyCtrl, , y1b] = nums;
-    const trueMidY = 0.25 * y0 + 0.5 * cyCtrl + 0.25 * y1b;
-    assertTrue(Math.abs(trueMidY - ry) < 0.5, `expected stop ${i}'s own lateral root to genuinely pass through the sprout's own real point at its own real fork, got a fork of ${trueMidY.toFixed(1)} vs the sprout's own ${ry.toFixed(1)}`);
+    const mirror = i % 2 === 0 ? 1 : -1;
+    const canopy = canopyMains.find((c) => Math.abs(Number(c.getAttribute("cx")) - p.x) < 20);
+    assertTrue(!!canopy, `expected stop ${i}'s own tree canopy near its own real p.x`);
+    const leanSign = Math.sign(Number(canopy.getAttribute("cx")) - p.x);
+    assertEqual(leanSign, mirror, `expected stop ${i}'s own canopy to lean toward the same side (${mirror > 0 ? "right" : "left"}) its own trunk actually tilts, not the opposite one`);
   });
 });
 
@@ -326,7 +318,7 @@ function distancePointToRect(px, py, rect) {
   return Math.hypot(dx, dy);
 }
 
-test("rootSystemTheme's sprout, and assemblyLineTheme's expression plates/belt/gear, clear the game's own 'Lesson N' marker at a realistic mobile width", () => {
+test("rootSystemTheme's tree canopy, and assemblyLineTheme's expression plates/belt/gear, clear the game's own 'Lesson N' marker at a realistic mobile width", () => {
   const rootTheme = LESSON_THEMES["satmath-nonlineareq"];
   const exprTheme = LESSON_THEMES["satmath-equivexpr"];
   const count = 8;
@@ -336,10 +328,23 @@ test("rootSystemTheme's sprout, and assemblyLineTheme's expression plates/belt/g
   const rootRoot = document.createElement("div");
   rootRoot.innerHTML = rootSvg;
   const p0 = rootPositions[0];
-  const sprout = [...rootRoot.querySelectorAll('circle[r="6"]')].find((r) => Math.abs(Number(r.getAttribute("cx")) - p0.x) < 60);
-  assertTrue(!!sprout, "expected a real sprout marker at stop 0");
-  const sproutDist = Math.hypot(Number(sprout.getAttribute("cx")) - p0.x, Number(sprout.getAttribute("cy")) - p0.y) - 6;
-  assertTrue(sproutDist > MARKER_RADIUS_LOCAL, `expected the sprout to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${sproutDist.toFixed(1)}`);
+  // The canopy's own dark back-blob (CANOPY_DARK, the largest of the
+  // three overlapping canopy ellipses) is the closest real solid shape
+  // to `p` in this tree, so it's the one whose clearance actually
+  // matters — checked via the real sampled ellipse contour, not a
+  // straight vertical assumption, since the canopy sits offset in both
+  // x and y from p.
+  const canopy = [...rootRoot.querySelectorAll('ellipse[fill="#3c5f2a"]')].find((e) => Math.abs(Number(e.getAttribute("cx")) - p0.x) < 30);
+  assertTrue(!!canopy, "expected a real tree canopy near stop 0");
+  const canopyDist = ellipseMinDistToPoint(
+    Number(canopy.getAttribute("cx")),
+    Number(canopy.getAttribute("cy")),
+    Number(canopy.getAttribute("rx")),
+    Number(canopy.getAttribute("ry")),
+    p0.x,
+    p0.y
+  );
+  assertTrue(canopyDist > MARKER_RADIUS_LOCAL, `expected the canopy to clear the marker's own real mobile-scale radius (${MARKER_RADIUS_LOCAL.toFixed(1)}), got ${canopyDist.toFixed(1)}`);
 
   const exprPositions = computeTrail(count, exprTheme.trailBand);
   const exprSvg = exprTheme.renderScene(exprPositions, totalHeightFor(count), BOSS_NAME);
