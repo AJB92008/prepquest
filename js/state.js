@@ -420,8 +420,23 @@ export class GameState {
     }
   }
 
+  // Called after nearly every in-game action (an XP gain, a quiz answer, a
+  // purchase — 30+ call sites), almost always from inside a synchronous UI
+  // event handler with no try/catch of its own. localStorage.setItem can
+  // throw (a full quota, or a browser blocking storage entirely — some
+  // private-browsing modes, some in-app/embedded webviews) — unlike this
+  // class's own _load(), this had no guard at all, so any one of those
+  // conditions would throw straight out of whatever screen just triggered
+  // a save, mid-render, rather than just failing to persist that one
+  // write. this.data already holds the update either way, so the current
+  // session keeps working correctly; only cross-session persistence is
+  // lost on a failed write.
   save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+    } catch (err) {
+      console.warn("GameState.save(): localStorage write failed, progress won't persist across sessions", err);
+    }
     this._saveListeners.forEach((cb) => cb(this.data));
   }
 
@@ -464,7 +479,16 @@ export class GameState {
     if (!parsed || typeof parsed !== "object" || !parsed.avatar || !parsed.skillProgress) {
       return { ok: false, error: "That file doesn't look like a PrepQuest save." };
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    // This docstring promises importSave() never throws — but an
+    // unguarded setItem here could (a full quota, or storage blocked
+    // entirely), and if it did, the immediate _load() below would then
+    // silently read back the *previous* save instead of the one just
+    // imported, still returning { ok: true } as if the import worked.
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    } catch (err) {
+      return { ok: false, error: "Couldn't write the imported save to this browser's storage." };
+    }
     this.data = this._load();
     this.save();
     return { ok: true };

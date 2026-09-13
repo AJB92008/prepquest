@@ -39,10 +39,7 @@ import { getSubject, getSkill, getTest, getTestSubjects, TEST_IDS } from "../dat
 import { gameState, percentileForTestScore, scoreFromAccuracyInRange } from "../state.js";
 import { hudHTML, wireHud, showToast } from "./hud.js";
 import { monsterSVG } from "./monster.js";
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
+import { escapeHtml } from "./escapeHtml.js";
 
 // This test's own per-section score range — half the composite range for
 // a "sum" test (SAT/PSAT: each of 2 sections covers half the total), the

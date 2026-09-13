@@ -5,6 +5,7 @@
 import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
 import { monsterSVG } from "./monster.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -18,10 +19,6 @@ function allFlashcards(data) {
     }
   }
   return cards;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 // Opens a small, self-contained print-friendly document in a new tab (its

@@ -1,5 +1,6 @@
 import { gameState } from "../state.js";
 import { getCloudStatus, onCloudSyncChange, signUp, signIn, resolveConflict, retryCloudInit } from "../cloudSync.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 // Shown before onboarding (avatar creation) so a player either has an
 // account backing up their progress from the very first monster they make,
@@ -70,7 +71,7 @@ export function renderAuthGate(root, navigate) {
       `;
     }
     if (status.signedIn) {
-      return `<p class="lesson-paragraph">Signed in as <strong>${status.email}</strong>. ${status.syncing ? "Syncing your progress…" : "Continuing…"}</p>`;
+      return `<p class="lesson-paragraph">Signed in as <strong>${escapeHtml(status.email)}</strong>. ${status.syncing ? "Syncing your progress…" : "Continuing…"}</p>`;
     }
     return `
       <form class="cloud-auth-form" data-gate-form>

@@ -15,6 +15,7 @@ import { gameState } from "../state.js";
 import { hudHTML, wireHud, showToast } from "./hud.js";
 import { monsterSVG } from "./monster.js";
 import { renderProgressBanners } from "./progressBanner.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 // 40 minutes matches the real, full-length ACT Writing test; the shorter
 // options exist purely for quicker practice reps (drafting under real time
@@ -50,9 +51,6 @@ function wordCount(text) {
   return trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
 
 export function renderEssay(root, navigate, { fromPracticeTest = false, practiceTestResults = null } = {}) {
   let prompt = null;

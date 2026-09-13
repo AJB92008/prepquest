@@ -7,14 +7,11 @@
 import { allSkillIds, getSkill } from "../data/skills.js";
 import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 function formatDate(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 export function renderStudyPlan(root, navigate) {

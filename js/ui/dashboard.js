@@ -6,6 +6,7 @@ import { hudHTML, wireHud } from "./hud.js";
 import { monsterSVG } from "./monster.js";
 import { renderPacingTag } from "./pacingFeedback.js";
 import { getCloudStatus, onCloudSyncChange, signUp, signIn, signOutCloud, resolveConflict, retryCloudInit } from "../cloudSync.js";
+import { escapeHtml } from "./escapeHtml.js";
 
 // A pure-SVG sparkline (no charting library) plotting composite score (1-36,
 // a fixed y-domain so the line's shape is comparable across sessions rather
@@ -315,7 +316,7 @@ function cloudCardInnerHTML() {
   if (status.signedIn) {
     return `
       <h3 class="dash-history-title">☁️ Cloud Account</h3>
-      <p class="lesson-paragraph">Signed in as <strong>${status.email}</strong>. Progress syncs automatically. Sign in with the same account on another device to pick up where you left off.</p>
+      <p class="lesson-paragraph">Signed in as <strong>${escapeHtml(status.email)}</strong>. Progress syncs automatically. Sign in with the same account on another device to pick up where you left off.</p>
       <button class="btn-secondary" data-cloud-sign-out>Sign Out</button>
     `;
   }

@@ -15,10 +15,7 @@ import { getFullBank, preloadAllSubjects } from "../data/questions/index.js";
 import { gameState } from "../state.js";
 import { hudHTML, wireHud } from "./hud.js";
 import { isWrittenQuestion } from "./writtenAnswer.js";
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
+import { escapeHtml } from "./escapeHtml.js";
 
 // A generous but real cap on how many resolved rows get built into the
 // DOM at once — the underlying log itself isn't capped this low (see
